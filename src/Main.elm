@@ -15,6 +15,7 @@ import Result
 import Result
 import Maybe exposing (withDefault)
 import Html.Attributes exposing (autofocus)
+import Tuple exposing (first)
 
 
 -- MAIN
@@ -52,7 +53,6 @@ update msg model =
 
 -- SUBSCRIPTIONS
 
-
 subscriptions : Model -> Sub Msg
 subscriptions _ =
   Sub.none
@@ -61,13 +61,12 @@ subscriptions _ =
 
 -- VIEW
 
-
 view : Model -> Browser.Document Msg
 view model = 
   { title = "Linear lambda calculus simulator"
   , body =
       [ h1 [] [text "Linear lambda calculus simulator"]
-      , textarea [rows 10, cols 80, autofocus True, onInput Change] []
+      , textarea [rows 25, cols 80, autofocus True, onInput Change] []
       , viewParsed model.code
       ]
   }
@@ -78,38 +77,82 @@ viewParsed code =
     SyntaxError _ ->
       pre [] [ text "Syntax error" ]
 
-    TypeError term error ->
+    TypeError _ error ->
       pre [] [ text ("Error: " ++ error) ]
     
-    WellTyped term aType value ->
+    WellTyped _ aType value ->
       pre [] [ text ("Value: \n" ++ (valueToString value)), br [] [], br [] [], text ("Type: \n" ++ typeToString aType) ]
       
 
 
 -- Parsing, type inference and evaluation chain
 
-type ParsingResult = SyntaxError String | TypeError Term String | WellTyped Term Type Value
+type ParsingResult
+  = SyntaxError String
+  | TypeError LambdaProgram String
+  | WellTyped LambdaProgram Type Value
 
 parseCheckEval : String -> ParsingResult
 parseCheckEval code =
   case parseProgram code of
-    Ok term ->
-      case typeInfer [] term of
-        Ok (aType, _, _) ->
-          -- eval should succeed since term is well-typed
-          let value = withDefault Value_Unit (eval [] term)
-          in WellTyped term aType value
+    Ok program ->
+      case typeInferProgram program of
+        Ok aType ->
+          let
+            (_, defs, mainTerm) = program
+            -- buildEnvFromDefs and eval should succeed since program is well-typed
+            env = withDefault [] (buildEnvFromDefs [] defs)
+            value = withDefault Value_Unit (eval env mainTerm)
+          in WellTyped program aType value
         Err error ->
-          TypeError term error
+          TypeError program error
     Err errors ->
       SyntaxError (String.join " or " errors)
 
+typeInferProgram : LambdaProgram -> Result String Type
+typeInferProgram (typeEnv, defEnv, mainTerm) =
+  checkTypeEnvironment [] typeEnv |> Result.andThen (\_ ->
+  typeInferDefEnv typeEnv [] defEnv |> Result.andThen (\context ->
+  typeInfer typeEnv context mainTerm |> Result.andThen (\(aType, _, _) ->
+  Ok aType)))
+
+typeInferDefEnv : TypeEnvironment -> Context -> DefinitionEnvironment -> Result String Context
+typeInferDefEnv typeEnv context defEnv =
+  case defEnv of
+    [] ->
+      Ok context
+    
+    (id, maybeType, term) :: xs ->
+      typeInfer typeEnv context term
+        |> Result.mapError (\e -> "In the definition of " ++ id ++ ": " ++ e)
+        |> Result.andThen (\(inferredType, _, _) ->
+      case maybeType of
+        Just declaredType ->
+          if typesAreEqual typeEnv inferredType declaredType
+          then typeInferDefEnv typeEnv ((id, (declaredType, Unrestricted)) :: context) xs
+          else Err ("Declared type of " ++ id ++ " is " ++ typeToString declaredType ++ ", but the inferred type is " ++ typeToString inferredType)
+        
+        Nothing ->
+          typeInferDefEnv typeEnv ((id, (inferredType, Unrestricted)) :: context) xs)
+
+buildEnvFromDefs : Environment -> DefinitionEnvironment -> Maybe Environment
+buildEnvFromDefs env defEnv =
+  case defEnv of
+    [] ->
+      Just env
+    
+    (id, _, term) :: xs ->
+      eval env term |> Maybe.andThen (\value ->
+      buildEnvFromDefs ((id, value) :: env) xs)
 
 
 -- TYPES
 
+type alias Id = String
+
 type Type
-  = Type_LinearFn Type Type
+  = Type_Constant Id
+  | Type_LinearFn Type Type
   | Type_UnrestrictedFn Type Type
   | Type_SimultaneousProduct Type Type
   | Type_Unit
@@ -123,6 +166,9 @@ type Type
 typeToString : Type -> String
 typeToString aType =
   case aType of
+    Type_Constant id ->
+      id
+    
     Type_LinearFn type1 type2 ->
       "(" ++ typeToString type1 ++ ") -o (" ++ typeToString type2 ++ ")"
     
@@ -153,8 +199,6 @@ typeToString aType =
 
 
 -- TERMS
-
-type alias Id = String
 
 type Term
   = Term_Var Id
@@ -295,13 +339,23 @@ termToIndentedString indentLevel term =
 
 
 
+-- PROGRAM
+
+type alias TypeEnvironment = List (Id, Type)
+
+type alias DefinitionEnvironment = List (Id, Maybe Type, Term)
+
+type alias LambdaProgram = (TypeEnvironment, DefinitionEnvironment, Term)
+
+
+
 -- PARSING
 
-parseProgram : String -> Result (List String) Term
+parseProgram : String -> Result (List String) LambdaProgram
 parseProgram input =
-  case parse program input of
-    Ok (_, _, result) ->
-      Ok result
+  case parse programParser input of
+    Ok (_, _, program) ->
+      Ok program
     Err (_, _, errors) ->
       Err errors
 
@@ -309,10 +363,56 @@ token : Parser s a -> Parser s a
 token parser = 
   whitespace |> keep parser
 
-program : Parser () Term
-program = expression |> ignore whitespace |> ignore end
+programParser : Parser () LambdaProgram
+programParser =
+  optional [] typedefClause |> andThen (\typeEnv ->
+  optional [] defClause |> andThen (\defEnv ->
+  expression |> andThen (\mainTerm ->
+  whitespace |> andThen (\_ ->
+  end |> andThen (\_ ->
+  succeed (typeEnv, defEnv, mainTerm))))))
 
+typedefClause : Parser () TypeEnvironment
+typedefClause =
+  token (string "typedef") |> andThen (\_ ->
+  typedefList |> andThen (\typeEnv ->
+  token (string "end") |> andThen (\_ ->
+  succeed typeEnv)))
 
+typedefList : Parser () TypeEnvironment
+typedefList =
+  sepEndBy (token (string ";")) typeDefinition
+
+typeDefinition : Parser () (Id, Type)
+typeDefinition =
+  identifier |> andThen (\id ->
+  token (string "=") |> andThen (\_ ->
+  typeExpr |> andThen (\aType ->
+  succeed (id, aType))))
+
+defClause : Parser () DefinitionEnvironment
+defClause =
+  token (string "def") |> andThen (\_ ->
+  defList |> andThen (\defEnv ->
+  token (string "end") |> andThen (\_ ->
+  succeed defEnv)))
+
+defList : Parser () DefinitionEnvironment
+defList =
+  sepEndBy (token (string ";")) definition
+
+definition : Parser () (Id, Maybe Type, Term)
+definition =
+  identifier |> andThen (\id ->
+  maybe typeAnnotation |> andThen (\maybeType ->
+  token (string "=") |> andThen (\_ ->
+  expression |> andThen (\term ->
+  succeed (id, maybeType, term)))))
+
+typeAnnotation : Parser () Type
+typeAnnotation =
+  token (string ":") |> andThen (\_ ->
+  typeExpr)
 
 expression : Parser () Term
 expression =
@@ -490,7 +590,8 @@ exprBetweenParens : Parser () Term
 exprBetweenParens = between (token (string "(")) (token (string ")")) (lazy (\_ -> expression))
 
 reservedWords : List String
-reservedWords = ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "abort"]
+reservedWords =
+  ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "abort", "typedef", "def", "end", "T"]
 
 identifier : Parser () String
 identifier = 
@@ -531,12 +632,16 @@ multiplicativeConnective = token (string "*") |> onsuccess (Type_SimultaneousPro
 typeAtom : Parser () Type
 typeAtom =
   choice
-    [ token (string "1") |> onsuccess Type_Unit
+    [ typeConstant
+    , token (string "1") |> onsuccess Type_Unit
     , token (string "T") |> onsuccess Type_Top
     , token (string "0") |> onsuccess Type_Zero
     , typeOfCourse
     , typeBetweenParens
     ]
+
+typeConstant : Parser () Type
+typeConstant = Combine.map Type_Constant identifier
 
 typeOfCourse : Parser () Type
 typeOfCourse =
@@ -547,6 +652,118 @@ typeOfCourse =
 typeBetweenParens : Parser () Type
 typeBetweenParens = between (token (string "(")) (token (string ")")) (lazy (\_ -> typeExpr))
 
+
+
+--- TYPE AND TYPE ENVIRONMENT WELL-FORMEDNESS
+
+type alias TypeContext = List Id
+
+checkTypeEnvironment : TypeContext -> TypeEnvironment -> Result String ()
+checkTypeEnvironment context env =
+  case env of
+    [] ->
+      Ok ()
+    
+    (id, aType) :: xs ->
+      checkType context aType
+        |> Result.mapError (\e -> "In the type definition of " ++ id ++ ": " ++ e)
+        |> Result.andThen (\_ ->
+      checkTypeEnvironment (id :: context) xs)
+
+checkType : TypeContext -> Type -> Result String ()
+checkType context aType =
+  case aType of
+    Type_Constant id ->
+      if List.member id context
+      then Ok ()
+      else Err ("The type " ++ id ++ " was not defined")
+    
+    Type_LinearFn t1 t2 ->
+      checkType context t1 |> Result.andThen (\_ ->
+      checkType context t2)
+    
+    Type_UnrestrictedFn t1 t2 ->
+      checkType context t1 |> Result.andThen (\_ ->
+      checkType context t2)
+    
+    Type_SimultaneousProduct t1 t2 ->
+      checkType context t1 |> Result.andThen (\_ ->
+      checkType context t2)
+    
+    Type_Unit ->
+      Ok ()
+    
+    Type_AlternativeProduct t1 t2 ->
+      checkType context t1 |> Result.andThen (\_ ->
+      checkType context t2)
+    
+    Type_Top ->
+      Ok ()
+    
+    Type_Sum t1 t2 ->
+      checkType context t1 |> Result.andThen (\_ ->
+      checkType context t2)
+    
+    Type_Zero ->
+      Ok ()
+    
+    Type_OfCourse t1 ->
+      checkType context t1
+
+envToContext : TypeEnvironment -> TypeContext
+envToContext typeEnv = List.map first typeEnv
+
+
+
+-- TYPE ALIAS RESOLUTION
+
+resolveTypeAlias : TypeEnvironment -> Type -> Type
+resolveTypeAlias typeEnv aType =
+  case aType of
+    Type_Constant id ->
+      case lookup id typeEnv of
+        Just anotherType ->
+          resolveTypeAlias typeEnv anotherType
+        
+        Nothing ->
+          -- Should not happen if aType is well-formed according to typeEnv
+          -- i.e. if checkType (envToContext typeEnv) aType == True
+          Type_Constant id
+    
+    x -> x
+
+typesAreEqual : TypeEnvironment -> Type -> Type -> Bool
+typesAreEqual typeEnv type1 type2 =
+  case (resolveTypeAlias typeEnv type1, resolveTypeAlias typeEnv type2) of
+    (Type_LinearFn type1_1 type1_2, Type_LinearFn type2_1 type2_2) ->
+      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    
+    (Type_UnrestrictedFn type1_1 type1_2, Type_UnrestrictedFn type2_1 type2_2) ->
+      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    
+    (Type_SimultaneousProduct type1_1 type1_2, Type_SimultaneousProduct type2_1 type2_2) ->
+      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    
+    (Type_Unit, Type_Unit) ->
+      True
+    
+    (Type_AlternativeProduct type1_1 type1_2, Type_AlternativeProduct type2_1 type2_2) ->
+      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    
+    (Type_Top, Type_Top) ->
+      True
+    
+    (Type_Sum type1_1 type1_2, Type_Sum type2_1 type2_2) ->
+      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    
+    (Type_Zero, Type_Zero) ->
+      True
+    
+    (Type_OfCourse type1_1, Type_OfCourse type2_1) ->
+      typesAreEqual typeEnv type1_1 type2_1
+    
+    _ ->
+      False
 
 
 -- TYPE INFERENCE
@@ -632,8 +849,8 @@ isAvailable id context =
     Just (_, Linear available) -> available
     _ -> False
 
-typeInfer : Context -> Term -> Result String (Type, Context, Bool)
-typeInfer context term =
+typeInfer : TypeEnvironment -> Context -> Term -> Result String (Type, Context, Bool)
+typeInfer typeEnv context term =
   case term of
     Term_Var id ->
       case lookup id context of
@@ -643,42 +860,46 @@ typeInfer context term =
         Nothing -> Err ("The variable " ++ id ++ " was not declared")
     
     Term_LinearLambda id varType body ->
-      typeInfer ((id, (varType, Linear True)) :: context) body |> Result.andThen (\(bodyType, outCtx, slack) ->
+      checkType (envToContext typeEnv) varType |> Result.andThen (\_ ->
+      typeInfer typeEnv ((id, (varType, Linear True)) :: context) body
+        |> Result.andThen (\(bodyType, outCtx, slack) ->
       if slack || not (isAvailable id outCtx)
       then Ok (Type_LinearFn varType bodyType, List.drop 1 outCtx, slack)
-      else Err ("The linear variable " ++ id ++ " is not used"))
+      else Err ("The linear variable " ++ id ++ " is not used")))
     
     Term_UnrestrictedLambda id varType body ->
-      typeInfer ((id, (varType, Unrestricted)) :: context) body |> Result.andThen (\(bodyType, outCtx, slack) ->
-      Ok (Type_UnrestrictedFn varType bodyType, List.drop 1 outCtx, slack))
+      checkType (envToContext typeEnv) varType |> Result.andThen (\_ ->
+      typeInfer typeEnv ((id, (varType, Unrestricted)) :: context) body
+        |> Result.andThen (\(bodyType, outCtx, slack) ->
+      Ok (Type_UnrestrictedFn varType bodyType, List.drop 1 outCtx, slack)))
     
     Term_Application e1 e2 ->
-      typeInfer context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
-      case type1 of
+      typeInfer typeEnv context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
+      case resolveTypeAlias typeEnv type1 of
         Type_LinearFn a b ->
-          typeInfer outCtx1 e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
-          if type2 == a
+          typeInfer  typeEnv outCtx1 e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
+          if typesAreEqual typeEnv type2 a
           then Ok (b, outCtx2, slack1 || slack2)
           else Err ("An expression of type " ++ typeToString a ++ " was expected, but it has type " ++ typeToString type2))
         
         Type_UnrestrictedFn a b ->
-          typeInfer (markAllAsUnavailable context) e2 |> Result.andThen (\(type2, _, _) ->
-          if type2 == a
+          typeInfer typeEnv (markAllAsUnavailable context) e2 |> Result.andThen (\(type2, _, _) ->
+          if typesAreEqual typeEnv type2 a
           then Ok (b, outCtx1, slack1)
           else Err ("An expression of type " ++ typeToString a ++ " was expected, but it has type " ++ typeToString type2))
 
         _ -> Err ("An expression of a function type was expected, but it has type " ++ typeToString type1))
     
     Term_SimultaneousPair e1 e2 ->
-      typeInfer context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
-      typeInfer outCtx1 e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
+      typeInfer typeEnv context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
+      typeInfer typeEnv outCtx1 e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
       Ok (Type_SimultaneousProduct type1 type2, outCtx2, slack1 || slack2)))
     
     Term_SimultaneousLet id1 id2 e1 e2 ->
-      typeInfer context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
-      case type1 of
+      typeInfer typeEnv context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
+      case resolveTypeAlias typeEnv type1 of
         Type_SimultaneousProduct a b ->
-          typeInfer ((id2, (b, Linear True)) :: (id1, (a, Linear True)) :: outCtx1) e2
+          typeInfer typeEnv ((id2, (b, Linear True)) :: (id1, (a, Linear True)) :: outCtx1) e2
             |> Result.andThen (\(type2, outCtx2, slack2) ->
           let
             availableId1 = isAvailable id1 outCtx2
@@ -697,25 +918,25 @@ typeInfer context term =
       Ok (Type_Unit, context, False)
     
     Term_UnitLet e1 e2 ->
-      typeInfer context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
-      case type1 of
+      typeInfer typeEnv context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
+      case resolveTypeAlias typeEnv type1 of
         Type_Unit ->
-          typeInfer outCtx1 e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
+          typeInfer typeEnv outCtx1 e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
           Ok (type2, outCtx2, slack1 || slack2))
         
         _ ->
           Err ("An expression of unit type was expected, but it has type " ++ typeToString type1))
     
     Term_AlternativePair e1 e2 ->
-      typeInfer context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
-      typeInfer context e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
+      typeInfer typeEnv context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
+      typeInfer typeEnv context e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
       if contextsAreCompatible outCtx1 slack1 outCtx2 slack2
       then Ok (Type_AlternativeProduct type1 type2, contextIntersection outCtx1 outCtx2, slack1 && slack2)
       else Err "Some linear variable is used in one component of the alternative pair, but not in the other"))
     
     Term_Fst e ->
-      typeInfer context e |> Result.andThen (\(aType, outCtx, slack) ->
-      case aType of
+      typeInfer typeEnv context e |> Result.andThen (\(aType, outCtx, slack) ->
+      case resolveTypeAlias typeEnv aType of
         Type_AlternativeProduct a _ ->
           Ok (a, outCtx, slack)
         
@@ -723,8 +944,8 @@ typeInfer context term =
           Err ("An expression of alternative product type was expected, but it has type " ++ typeToString aType))
     
     Term_Snd e ->
-      typeInfer context e |> Result.andThen (\(aType, outCtx, slack) ->
-      case aType of
+      typeInfer typeEnv context e |> Result.andThen (\(aType, outCtx, slack) ->
+      case resolveTypeAlias typeEnv aType of
         Type_AlternativeProduct _ b ->
           Ok (b, outCtx, slack)
         
@@ -735,26 +956,30 @@ typeInfer context term =
       Ok (Type_Top, context, True)
     
     Term_Inl type2 e ->
-      typeInfer context e |> Result.andThen (\(type1, outCtx, slack) ->
-      Ok (Type_Sum type1 type2, outCtx, slack))
+      checkType (envToContext typeEnv) type2 |> Result.andThen (\_ ->
+      typeInfer typeEnv context e |> Result.andThen (\(type1, outCtx, slack) ->
+      Ok (Type_Sum type1 type2, outCtx, slack)))
     
     Term_Inr type1 e ->
-      typeInfer context e |> Result.andThen (\(type2, outCtx, slack) ->
-      Ok (Type_Sum type1 type2, outCtx, slack))
+      checkType (envToContext typeEnv) type1 |> Result.andThen (\_ ->
+      typeInfer typeEnv context e |> Result.andThen (\(type2, outCtx, slack) ->
+      Ok (Type_Sum type1 type2, outCtx, slack)))
 
     Term_Case e id1 e1 id2 e2 ->
-      typeInfer context e |> Result.andThen (\(type1, outCtx1, slack1) ->
-      case type1 of
+      typeInfer typeEnv context e |> Result.andThen (\(type1, outCtx1, slack1) ->
+      case resolveTypeAlias typeEnv type1 of
         Type_Sum a b ->
-          typeInfer ((id1, (a, Linear True)) :: outCtx1) e1 |> Result.andThen (\(type2, outCtx2, slack2) ->
+          typeInfer typeEnv ((id1, (a, Linear True)) :: outCtx1) e1
+            |> Result.andThen (\(type2, outCtx2, slack2) ->
           if (not slack2) && (isAvailable id1 outCtx2)
           then Err ("The linear variable " ++ id1 ++ " is not used")
           else
-            typeInfer ((id2, (b, Linear True)) :: outCtx1) e2 |> Result.andThen (\(type3, outCtx3, slack3) ->
+            typeInfer typeEnv ((id2, (b, Linear True)) :: outCtx1) e2
+              |> Result.andThen (\(type3, outCtx3, slack3) ->
             if (not slack3) && (isAvailable id2 outCtx3)
             then Err ("The linear variable " ++ id2 ++ " is not used")
             else
-              if type2 /= type3
+              if not (typesAreEqual typeEnv type2 type3)
               then Err ("The types of both case branches should be equal, but the first branch has type " ++
                 typeToString type2 ++ " while the second branch has type " ++ typeToString type3)
               else
@@ -770,23 +995,25 @@ typeInfer context term =
           Err ("An expression of sum type was expected, but it has type " ++ typeToString type1))
     
     Term_Abort aType e ->
-      typeInfer context e |> Result.andThen (\(type1, outCtx, _) ->
-      case type1 of
+      checkType (envToContext typeEnv) aType |> Result.andThen (\_ ->
+      typeInfer typeEnv context e |> Result.andThen (\(type1, outCtx, _) ->
+      case resolveTypeAlias typeEnv type1 of
         Type_Zero ->
           Ok (aType, outCtx, True)
         
         _ ->
-          Err ("An expression of type 0 was expected, but it has type " ++ typeToString type1))
+          Err ("An expression of type 0 was expected, but it has type " ++ typeToString type1)))
     
     Term_Bang e ->
-      typeInfer (markAllAsUnavailable context) e |> Result.andThen (\(aType, _, _) ->
+      typeInfer typeEnv (markAllAsUnavailable context) e |> Result.andThen (\(aType, _, _) ->
       Ok (Type_OfCourse aType, context, False))
     
     Term_BangLet id e1 e2 ->
-      typeInfer context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
-      case type1 of
+      typeInfer typeEnv context e1 |> Result.andThen (\(type1, outCtx1, slack1) ->
+      case resolveTypeAlias typeEnv type1 of
         Type_OfCourse a ->
-          typeInfer ((id, (a, Unrestricted)) :: outCtx1) e2 |> Result.andThen (\(type2, outCtx2, slack2) ->
+          typeInfer typeEnv ((id, (a, Unrestricted)) :: outCtx1) e2
+            |> Result.andThen (\(type2, outCtx2, slack2) ->
           Ok (type2, List.drop 1 outCtx2, slack1 || slack2))
         
         _ ->
