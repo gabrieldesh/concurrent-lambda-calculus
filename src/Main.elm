@@ -2,20 +2,15 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (rows, cols)
-import Html.Events exposing (onInput)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput, onClick)
 import Combine exposing (..)
-import Result
-import Result
-import Result
-import Result
-import Result
-import Result
-import Result
-import Result
 import Maybe exposing (withDefault)
-import Html.Attributes exposing (autofocus)
 import Tuple exposing (first)
+import File exposing (File)
+import File.Select as Select
+import File.Download as Download
+import Task
 
 
 -- MAIN
@@ -42,13 +37,18 @@ init _ = ({ code = "" }, Cmd.none)
 
 -- UPDATE
 
-type Msg = Change String
+type Msg = ChangeCode String | LoadFile | SaveFile | GotFile File
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = 
   case msg of
-    Change newCode -> ( { model | code = newCode }, Cmd.none )
+    ChangeCode newCode -> ( { model | code = newCode }, Cmd.none )
 
+    LoadFile -> (model, Select.file [] GotFile)
+
+    SaveFile -> (model, Download.string "program.llc" "text/plain" model.code)
+
+    GotFile file -> (model, Task.perform ChangeCode (File.toString file))
 
 
 -- SUBSCRIPTIONS
@@ -66,7 +66,11 @@ view model =
   { title = "Linear lambda calculus simulator"
   , body =
       [ h1 [] [text "Linear lambda calculus simulator"]
-      , textarea [rows 25, cols 80, autofocus True, onInput Change] []
+      , div [style "margin-bottom" "20px"]
+        [ button [ onClick LoadFile ] [ text "Load file" ]
+        , button [ onClick SaveFile ] [ text "Save file" ]
+        ]
+      , textarea [rows 25, cols 80, autofocus True, onInput ChangeCode, value model.code] [ ]
       , viewParsed model.code
       ]
   }
