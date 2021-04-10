@@ -1,0 +1,29 @@
+typedef
+  Bool = 1 + 1;
+  C = Bool;
+
+  Nat = (C -o C) -> C -o C;
+
+end
+
+def
+  zero : Nat = \f : C -o C. \^x : C. x;
+  succ : Nat -o Nat =
+    \^n : Nat.
+      \f : C -o C. \^x : C. f (n f x);
+
+  true  : Bool = inl [1] *;
+  false : Bool = inr [1] *;
+  not : Bool -o Bool =
+    \^b : Bool.
+      case b of
+        inl unit => let * = unit in false |
+        inr unit => let * = unit in true;
+
+  isEven : Nat -o Bool =
+    \^n : Nat.
+      n not true;
+
+end
+
+isEven (succ (succ zero))

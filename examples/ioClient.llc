@@ -1,0 +1,65 @@
+typedef
+  Char = !(1 + 1);
+
+  IOClient1 = (Char -o 1        ) + (Char * 1        );
+  IOClient2 = (Char -o IOClient1) + (Char * IOClient1);
+end
+
+def
+  char0 : Char = !(inl [1] *);
+  char1 : Char = !(inr [1] *);
+
+  getChar2 : (Char -o IOClient1) -o IOClient2 =
+    \^f : (Char -o IOClient1).
+      inl [Char * IOClient1] f;
+
+  getChar1 : (Char -o 1) -o IOClient1 =
+    \^f : (Char -o 1).
+      inl [Char * 1] f;
+
+  putChar2 : Char -o IOClient1 -o IOClient2 =
+    \^c : Char.
+    \^continuation : IOClient1.
+      inr [Char -o IOClient1] {c, continuation};
+
+  putChar1 : Char -o 1 -o IOClient1 =
+    \^c : Char.
+    \^continuation : 1.
+      inr [Char -o 1] {c, continuation};
+
+  echo : IOClient2 =
+    getChar2 \^c : Char.
+    putChar1 c *;
+
+  get2Chars : (Char -o Char -o 1) -o IOClient2 =
+    \^f : (Char -o Char -o 1).
+      getChar2 \^c1 : Char.
+      getChar1 \^c2 : Char.
+      f c1 c2;
+
+  memChar1 : Char -o IOClient1 -o 1 =
+    \^state : Char.
+    \^io : IOClient1.
+      let !s = state in
+      case io of
+        inl getC => getC !s |
+        inr putC =>
+          let {newState, newIO} = putC in
+          let !ns = newState in
+          let * = newIO in
+          *;
+
+  memChar2 : Char -o IOClient2 -o 1 =
+    \^state : Char.
+    \^io : IOClient2.
+      let !s = state in
+      case io of
+        inl getC => memChar1 !s (getC !s) |
+        inr putC =>
+          let {newState, newIO} = putC in
+          memChar1 newState newIO;
+    
+
+end
+
+memChar2 char1 

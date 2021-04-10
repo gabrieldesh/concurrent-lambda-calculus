@@ -1,0 +1,55 @@
+typedef
+  Char = !(1 + 1);
+
+  IO1 = (Char * 1  ) & (Char -o 1  );
+  IO2 = (Char * IO1) & (Char -o IO1);
+end
+
+def
+  char0 : Char = !(inl [1] *);
+  char1 : Char = !(inr [1] *);
+
+  getChar2 : IO2 -o Char * IO1 =
+    \^io : IO2. fst io;
+
+  getChar1 : IO1 -o Char * 1 =
+    \^io : IO1. fst io;
+
+  putChar2 : Char -o IO2 -o IO1 =
+    \^c  : Char.
+    \^io : IO2.
+      (snd io) c;
+
+  putChar1 : Char -o IO1 -o 1 =
+    \^c  : Char.
+    \^io : IO1.
+      (snd io) c;
+
+  echo : IO2 -o 1 =
+    \^io : IO2.
+      let {c, newIO} = getChar2 io
+      in putChar1 c newIO;
+
+  get2Chars : IO2 -o Char * Char =
+    \^io : IO2.
+      let {c1, newIO} = getChar2 io in
+      let {c2, unit } = getChar1 newIO in
+      let * = unit in
+      {c1, c2};
+
+  memChar1 : Char -o IO1 =
+    \^state : Char.
+      let !s = state in
+      < {!s, *}
+      , \^newState : Char. let !ns = newState in * >;
+
+  memChar2 : Char -o IO2 =
+    \^state : Char.
+      let !s = state in
+      < {!s, memChar1 !s}
+      , \^newState : Char. memChar1 newState
+      >
+
+end
+
+echo (memChar2 char0)

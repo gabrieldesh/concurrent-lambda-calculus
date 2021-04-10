@@ -1,0 +1,23 @@
+typedef
+  Bool = 1 + 1;
+  C = Bool;
+end
+
+def
+  true  : Bool = inl [1] *;
+  false : Bool = inr [1] *;
+
+  if : Bool -o (C & C) -o C =
+    \^b : Bool.
+    \^n : C & C.
+      case b of
+        inl unit => let * = unit in fst n |
+        inr unit => let * = unit in snd n;
+
+  and : Bool -o Bool -> Bool =
+    \^x : Bool.
+    \ y : Bool.
+      if x <y, false>
+end
+
+and
