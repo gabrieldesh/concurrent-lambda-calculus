@@ -87,9 +87,7 @@ viewParsed code =
       pre [] [ text ("Error: " ++ error) ]
     
     WellTyped _ aType value ->
-      pre [] [ text ("Value: \n" ++ (valueToString value))
-             , br [] []
-             , br [] []
+      pre [] [ text ("Value: \n" ++ (valueToString value) ++ "\n\n")
              , text ("Type: \n" ++ typeToString aType) ]
       
 

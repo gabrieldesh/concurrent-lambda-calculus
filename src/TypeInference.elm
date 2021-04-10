@@ -20,6 +20,7 @@ typeInferProgram (typeEnv, defEnv, mainTerm) =
 
 type alias TypeContext = List Id
 
+-- Checks if all type constants are defined before their use.
 checkTypeEnvironment : TypeContext -> TypeEnvironment -> Result String ()
 checkTypeEnvironment context env =
   case env of
@@ -32,6 +33,7 @@ checkTypeEnvironment context env =
         |> andThen (\_ ->
       checkTypeEnvironment (id :: context) xs)
 
+-- Checks if all type constants occurring in a type are defined, given a context of defined type constants.
 checkType : TypeContext -> Type -> Result String ()
 checkType context aType =
   case aType of
@@ -76,6 +78,8 @@ checkType context aType =
 
 -- DEFINITION ENVIRONMENT TYPE INFERENCE
 
+-- Checks if all definitions are well-typed. Returns a type error (if any) or the context assigning 
+-- each defined variable to its inferred type.
 typeInferDefEnv : TypeEnvironment -> Context -> DefinitionEnvironment -> Result String Context
 typeInferDefEnv typeEnv context defEnv =
   case defEnv of
@@ -152,6 +156,21 @@ typesAreEqual typeEnv type1 type2 =
 
 
 -- TERM TYPE INFERENCE
+
+{- The term type inference is based on this handout by Frank Pfenning
+https://www.cs.cmu.edu/~fp/courses/linear/handouts/linfp.pdf
+Note that the handout is a draft, so it may contain errors.
+
+There are two differences relative to the representation of contexts:
+1. Instead of separating contexts as linear and unrestricted, this implementation uses a single context, 
+where variables are marked with their multiplicity. If the same variable name is declared as linear and
+unrestricted, this allows us to distinguish which declaration occurs in an inner scope, since the order 
+of the single context list gives the order in which the variables were declared.
+
+2. Instead of removing linear variables from the context when they are used, linear variables are marked 
+with a boolean flag that indicates if they are available. The flag is set to False when the variable is 
+used. This allows us to distinguish if a linear variable was not declared or if it was declared but was 
+already used, resulting in more precise error messages. -}
 
 type Multiplicity = Linear Bool | Unrestricted
 
