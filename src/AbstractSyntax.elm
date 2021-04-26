@@ -1,4 +1,15 @@
-module AbstractSyntax exposing (..)
+module AbstractSyntax exposing
+  ( Id
+  , Type(..)
+  , typeToString
+  , Term(..)
+  , termToString
+  , TypeContext
+  , TypeEnvironment
+  , DefinitionEnvironment
+  , SimpleContext
+  , LambdaProgram
+  )
 
 
 type alias Id = String
@@ -197,8 +208,19 @@ termToIndentedString indentLevel term =
 
 -- PROGRAM
 
+type alias TypeContext = List Id
+
 type alias TypeEnvironment = List (Id, Type)
+
+type alias SimpleContext = List (Id, Type)
 
 type alias DefinitionEnvironment = List (Id, Maybe Type, Term)
 
-type alias LambdaProgram = (TypeEnvironment, DefinitionEnvironment, Term)
+type alias LambdaProgram =
+  { atomicTypes : TypeContext
+  , typedefs : TypeEnvironment
+  , unrestrictedContext : SimpleContext
+  , linearContext : SimpleContext
+  , defs : DefinitionEnvironment
+  , mainTerm : Term
+  }

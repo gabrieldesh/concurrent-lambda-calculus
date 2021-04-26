@@ -86,7 +86,11 @@ viewParsed code =
     TypeError _ error ->
       pre [] [ text ("Error: " ++ error) ]
     
-    WellTyped _ aType value ->
+    EvaluationError _ aType ->
+      pre [] [ text ("Value: \n<stuck>\n\n")
+             , text ("Type: \n" ++ typeToString aType) ]
+    
+    Success _ aType value ->
       pre [] [ text ("Value: \n" ++ (valueToString value) ++ "\n\n")
              , text ("Type: \n" ++ typeToString aType) ]
       
@@ -97,7 +101,8 @@ viewParsed code =
 type ParsingResult
   = SyntaxError String
   | TypeError LambdaProgram String
-  | WellTyped LambdaProgram Type Value
+  | EvaluationError LambdaProgram Type
+  | Success LambdaProgram Type Value
 
 parseInferEval : String -> ParsingResult
 parseInferEval code =
@@ -105,9 +110,11 @@ parseInferEval code =
     Ok program ->
       case typeInferProgram program of
         Ok aType ->
-          -- evalProgram should suceed since program is well-typed
-          let value = Maybe.withDefault Value_Unit (evalProgram program)
-          in WellTyped program aType value
+          case evalProgram program of
+            Just value ->
+              Success program aType value
+            Nothing ->
+              EvaluationError program aType
         Err error ->
           TypeError program error
     Err errors ->

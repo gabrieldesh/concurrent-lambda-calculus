@@ -55,7 +55,7 @@ valueToString value =
 -- PROGRAM EVALUATION
 
 evalProgram : LambdaProgram -> Maybe Value
-evalProgram (_, defs, mainTerm) =
+evalProgram { defs, mainTerm } =
   evalDefEnv [] defs |> andThen (\env ->
   evalTerm env mainTerm)
 

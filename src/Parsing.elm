@@ -38,7 +38,8 @@ multilineComment =
 
 reservedWords : List String
 reservedWords =
-  ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "abort", "typedef", "def", "end", "T"]
+  ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "abort", "atomic", "types", "unrestricted",
+   "linear", "context", "typedef", "def", "end", "T"]
 
 identifier : Parser s String
 identifier = 
@@ -53,12 +54,34 @@ identifier =
 
 programParser : Parser s LambdaProgram
 programParser =
-  optional [] typedefClause |> andThen (\typeEnv ->
-  optional [] defClause |> andThen (\defEnv ->
+  optional [] atomicTypesClause |> andThen (\atomicTypes ->
+  optional [] typedefClause |> andThen (\typedefs ->
+  optional [] unrestrictedContextClause |> andThen (\unrestrictedContext ->
+  optional [] linearContextClause |> andThen (\linearContext ->
+  optional [] defClause |> andThen (\defs ->
   expression |> andThen (\mainTerm ->
   whitespaceOrComments |> andThen (\_ ->
   end |> andThen (\_ ->
-  succeed (typeEnv, defEnv, mainTerm))))))
+  succeed
+    { atomicTypes = atomicTypes
+    , typedefs = typedefs
+    , unrestrictedContext = unrestrictedContext
+    , linearContext = linearContext
+    , defs = defs
+    , mainTerm = mainTerm
+    }))))))))
+
+atomicTypesClause : Parser s TypeContext
+atomicTypesClause =
+  token (string "atomic") |> andThen (\_ ->
+  token (string "types") |> andThen (\_ ->
+  atomicTypesList |> andThen (\atomicTypes ->
+  token (string "end") |> andThen (\_ ->
+  succeed atomicTypes))))
+
+atomicTypesList : Parser s TypeContext
+atomicTypesList =
+  sepEndBy (token (string ";")) identifier
 
 typedefClause : Parser s TypeEnvironment
 typedefClause =
@@ -75,6 +98,33 @@ typeDefinition : Parser s (Id, Type)
 typeDefinition =
   identifier |> andThen (\id ->
   token (string "=") |> andThen (\_ ->
+  typeExpr |> andThen (\aType ->
+  succeed (id, aType))))
+
+unrestrictedContextClause : Parser s SimpleContext
+unrestrictedContextClause =
+  token (string "unrestricted") |> andThen (\_ ->
+  token (string "context") |> andThen (\_ ->
+  contextList |> andThen (\context ->
+  token (string "end") |> andThen (\_ ->
+  succeed context))))
+
+linearContextClause : Parser s SimpleContext
+linearContextClause =
+  token (string "linear") |> andThen (\_ ->
+  token (string "context") |> andThen (\_ ->
+  contextList |> andThen (\context ->
+  token (string "end") |> andThen (\_ ->
+  succeed context))))
+
+contextList : Parser s SimpleContext
+contextList =
+  sepEndBy (token (string ";")) contextDeclaration
+
+contextDeclaration : Parser s (Id, Type)
+contextDeclaration =
+  identifier |> andThen (\id ->
+  token (string ":") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
   succeed (id, aType))))
 

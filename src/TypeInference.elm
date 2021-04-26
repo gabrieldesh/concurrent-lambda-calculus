@@ -8,98 +8,136 @@ import Result exposing (andThen, mapError)
 -- PROGRAM TYPE INFERENCE
 
 typeInferProgram : LambdaProgram -> Result String Type
-typeInferProgram (typeEnv, defEnv, mainTerm) =
-  checkTypeEnvironment [] typeEnv |> andThen (\_ ->
-  typeInferDefEnv typeEnv [] defEnv |> andThen (\context ->
-  typeInferTerm typeEnv context mainTerm |> andThen (\(aType, _, _) ->
-  Ok aType)))
+typeInferProgram { atomicTypes, typedefs, unrestrictedContext, linearContext, defs, mainTerm } =
+  checkTypeEnvironment atomicTypes typedefs |> andThen (\typeContext ->
+  checkSimpleContext typeContext [] unrestrictedContext Unrestricted |> andThen (\context1 ->
+  checkSimpleContext typeContext context1 linearContext (Linear True) |> andThen (\context2 ->
+  typeInferDefEnv typeContext typedefs context2 defs |> andThen (\context ->
+  typeInferTerm typeContext typedefs context mainTerm |> andThen (\(aType, outCtx, slack) ->
+  if slack
+  then
+    Ok aType
+  else
+    checkOutContext outCtx |> andThen (\_ ->
+    Ok aType))))))
+
+checkOutContext : Context -> Result String ()
+checkOutContext outCtx =
+  case outCtx of
+    [] ->
+      Ok ()
+
+    (id, (_, Linear True)) :: _ ->
+      Err ("The linear variable " ++ id ++ " is not used")
+    
+    _ :: xs ->
+      checkOutContext xs
 
 
 
 --- TYPE AND TYPE ENVIRONMENT WELL-FORMEDNESS
 
-type alias TypeContext = List Id
-
 -- Checks if all type constants are defined before their use.
-checkTypeEnvironment : TypeContext -> TypeEnvironment -> Result String ()
-checkTypeEnvironment context env =
+checkTypeEnvironment : TypeContext -> TypeEnvironment -> Result String TypeContext
+checkTypeEnvironment typeContext env =
   case env of
     [] ->
-      Ok ()
+      Ok typeContext
     
     (id, aType) :: xs ->
-      checkType context aType
+      checkType typeContext aType
         |> mapError (\e -> "In the type definition of " ++ id ++ ": " ++ e)
         |> andThen (\_ ->
-      checkTypeEnvironment (id :: context) xs)
+      checkTypeEnvironment (id :: typeContext) xs)
 
 -- Checks if all type constants occurring in a type are defined, given a context of defined type constants.
 checkType : TypeContext -> Type -> Result String ()
-checkType context aType =
+checkType typeContext aType =
   case aType of
     Type_Constant id ->
-      if List.member id context
+      if List.member id typeContext
       then Ok ()
-      else Err ("The type " ++ id ++ " was not defined")
+      else Err ("The type " ++ id ++ " was not declared")
     
     Type_LinearFn t1 t2 ->
-      checkType context t1 |> andThen (\_ ->
-      checkType context t2)
+      checkType typeContext t1 |> andThen (\_ ->
+      checkType typeContext t2)
     
     Type_UnrestrictedFn t1 t2 ->
-      checkType context t1 |> andThen (\_ ->
-      checkType context t2)
+      checkType typeContext t1 |> andThen (\_ ->
+      checkType typeContext t2)
     
     Type_SimultaneousProduct t1 t2 ->
-      checkType context t1 |> andThen (\_ ->
-      checkType context t2)
+      checkType typeContext t1 |> andThen (\_ ->
+      checkType typeContext t2)
     
     Type_Unit ->
       Ok ()
     
     Type_AlternativeProduct t1 t2 ->
-      checkType context t1 |> andThen (\_ ->
-      checkType context t2)
+      checkType typeContext t1 |> andThen (\_ ->
+      checkType typeContext t2)
     
     Type_Top ->
       Ok ()
     
     Type_Sum t1 t2 ->
-      checkType context t1 |> andThen (\_ ->
-      checkType context t2)
+      checkType typeContext t1 |> andThen (\_ ->
+      checkType typeContext t2)
     
     Type_Zero ->
       Ok ()
     
     Type_OfCourse t1 ->
-      checkType context t1
+      checkType typeContext t1
+
+
+
+-- CONTEXT WELL-FORMEDNESS
+
+-- Checks if all types in a SimpleContext are well-formed. Returns an error (if any) or a Context
+-- assigning to each variable its declared type and the Multiplicity given as parameter.
+checkSimpleContext : TypeContext -> Context -> SimpleContext -> Multiplicity -> Result String Context
+checkSimpleContext typeContext context simpleContext multiplicity =
+  case simpleContext of
+    [] ->
+      Ok context
+    
+    (id, aType) :: xs ->
+      checkType typeContext aType
+        |> mapError (\e -> "In the declaration of " ++ id ++ ": " ++ e)
+        |> andThen (\_ ->
+      checkSimpleContext typeContext ((id, (aType, multiplicity)) :: context) xs multiplicity)
 
 
 
 -- DEFINITION ENVIRONMENT TYPE INFERENCE
 
--- Checks if all definitions are well-typed. Returns a type error (if any) or the context assigning 
--- each defined variable to its inferred type.
-typeInferDefEnv : TypeEnvironment -> Context -> DefinitionEnvironment -> Result String Context
-typeInferDefEnv typeEnv context defEnv =
+-- Checks if all definitions are well-typed. Returns a type error (if any) or the context assigning to
+-- each defined variable its inferred type.
+typeInferDefEnv : TypeContext -> TypeEnvironment -> Context -> DefinitionEnvironment -> Result String Context
+typeInferDefEnv typeContext typeEnv context defEnv =
   case defEnv of
     [] ->
       Ok context
     
     (id, maybeType, term) :: xs ->
-      typeInferTerm typeEnv context term
+      typeInferTerm typeContext typeEnv (markAllAsUnavailable context) term
         |> mapError (\e -> "In the definition of " ++ id ++ ": " ++ e)
         |> andThen (\(inferredType, _, _) ->
       case maybeType of
         Just declaredType ->
+          checkType typeContext declaredType
+            |> mapError (\e -> "In the type annotation of " ++ id ++ ": " ++ e)
+            |> andThen (\_ ->
           if typesAreEqual typeEnv inferredType declaredType
-          then typeInferDefEnv typeEnv ((id, (declaredType, Unrestricted)) :: context) xs
+          then typeInferDefEnv typeContext typeEnv ((id, (declaredType, Unrestricted)) :: context) xs
           else
             Err ("Declared type of " ++ id ++ " is " ++ typeToString declaredType
-              ++ ", but the inferred type is " ++ typeToString inferredType)
+              ++ ", but the inferred type is " ++ typeToString inferredType))
         
         Nothing ->
-          typeInferDefEnv typeEnv ((id, (inferredType, Unrestricted)) :: context) xs)
+          typeInferDefEnv typeContext typeEnv ((id, (inferredType, Unrestricted)) :: context) xs)
 
 
 
@@ -114,8 +152,6 @@ resolveTypeAlias typeEnv aType =
           resolveTypeAlias typeEnv anotherType
         
         Nothing ->
-          -- Should not happen if aType is well-formed according to typeEnv
-          -- i.e. if checkType (envToContext typeEnv) aType == True
           Type_Constant id
     
     x -> x
@@ -123,6 +159,9 @@ resolveTypeAlias typeEnv aType =
 typesAreEqual : TypeEnvironment -> Type -> Type -> Bool
 typesAreEqual typeEnv type1 type2 =
   case (resolveTypeAlias typeEnv type1, resolveTypeAlias typeEnv type2) of
+    (Type_Constant id1, Type_Constant id2) ->
+      id1 == id2
+
     (Type_LinearFn type1_1 type1_2, Type_LinearFn type2_1 type2_2) ->
       typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
     
@@ -229,11 +268,8 @@ isAvailable id context =
     Just (_, Linear available) -> available
     _ -> False
 
-envToContext : TypeEnvironment -> TypeContext
-envToContext typeEnv = List.map Tuple.first typeEnv
-
-typeInferTerm : TypeEnvironment -> Context -> Term -> Result String (Type, Context, Bool)
-typeInferTerm typeEnv context term =
+typeInferTerm : TypeContext -> TypeEnvironment -> Context -> Term -> Result String (Type, Context, Bool)
+typeInferTerm typeContext typeEnv context term =
   case term of
     Term_Var id ->
       case lookup id context of
@@ -243,24 +279,24 @@ typeInferTerm typeEnv context term =
         Nothing -> Err ("The variable " ++ id ++ " was not declared")
     
     Term_LinearLambda id varType body ->
-      checkType (envToContext typeEnv) varType |> andThen (\_ ->
-      typeInferTerm typeEnv ((id, (varType, Linear True)) :: context) body
+      checkType typeContext varType |> andThen (\_ ->
+      typeInferTerm typeContext typeEnv ((id, (varType, Linear True)) :: context) body
         |> andThen (\(bodyType, outCtx, slack) ->
       if slack || not (isAvailable id outCtx)
       then Ok (Type_LinearFn varType bodyType, List.drop 1 outCtx, slack)
       else Err ("The linear variable " ++ id ++ " is not used")))
     
     Term_UnrestrictedLambda id varType body ->
-      checkType (envToContext typeEnv) varType |> andThen (\_ ->
-      typeInferTerm typeEnv ((id, (varType, Unrestricted)) :: context) body
+      checkType typeContext varType |> andThen (\_ ->
+      typeInferTerm typeContext typeEnv ((id, (varType, Unrestricted)) :: context) body
         |> andThen (\(bodyType, outCtx, slack) ->
       Ok (Type_UnrestrictedFn varType bodyType, List.drop 1 outCtx, slack)))
     
     Term_Application e1 e2 ->
-      typeInferTerm typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
       case resolveTypeAlias typeEnv type1 of
         Type_LinearFn a b ->
-          typeInferTerm  typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
+          typeInferTerm typeContext typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
           if typesAreEqual typeEnv type2 a
           then Ok (b, outCtx2, slack1 || slack2)
           else
@@ -268,7 +304,7 @@ typeInferTerm typeEnv context term =
               ++ typeToString type2))
         
         Type_UnrestrictedFn a b ->
-          typeInferTerm typeEnv (markAllAsUnavailable context) e2 |> andThen (\(type2, _, _) ->
+          typeInferTerm typeContext typeEnv (markAllAsUnavailable context) e2 |> andThen (\(type2, _, _) ->
           if typesAreEqual typeEnv type2 a
           then Ok (b, outCtx1, slack1)
           else
@@ -278,15 +314,15 @@ typeInferTerm typeEnv context term =
         _ -> Err ("An expression of a function type was expected, but it has type " ++ typeToString type1))
     
     Term_SimultaneousPair e1 e2 ->
-      typeInferTerm typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      typeInferTerm typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
+      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
       Ok (Type_SimultaneousProduct type1 type2, outCtx2, slack1 || slack2)))
     
     Term_SimultaneousLet id1 id2 e1 e2 ->
-      typeInferTerm typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
       case resolveTypeAlias typeEnv type1 of
         Type_SimultaneousProduct a b ->
-          typeInferTerm typeEnv ((id2, (b, Linear True)) :: (id1, (a, Linear True)) :: outCtx1) e2
+          typeInferTerm typeContext typeEnv ((id2, (b, Linear True)) :: (id1, (a, Linear True)) :: outCtx1) e2
             |> andThen (\(type2, outCtx2, slack2) ->
           let
             availableId1 = isAvailable id1 outCtx2
@@ -307,25 +343,25 @@ typeInferTerm typeEnv context term =
       Ok (Type_Unit, context, False)
     
     Term_UnitLet e1 e2 ->
-      typeInferTerm typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
       case resolveTypeAlias typeEnv type1 of
         Type_Unit ->
-          typeInferTerm typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
+          typeInferTerm typeContext typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
           Ok (type2, outCtx2, slack1 || slack2))
         
         _ ->
           Err ("An expression of unit type was expected, but it has type " ++ typeToString type1))
     
     Term_AlternativePair e1 e2 ->
-      typeInferTerm typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      typeInferTerm typeEnv context e2 |> andThen (\(type2, outCtx2, slack2) ->
+      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv context e2 |> andThen (\(type2, outCtx2, slack2) ->
       if contextsAreCompatible outCtx1 slack1 outCtx2 slack2
       then Ok (Type_AlternativeProduct type1 type2, contextIntersection outCtx1 outCtx2, slack1 && slack2)
       else
         Err "Some linear variable is used in one component of the alternative pair, but not in the other"))
     
     Term_Fst e ->
-      typeInferTerm typeEnv context e |> andThen (\(aType, outCtx, slack) ->
+      typeInferTerm typeContext typeEnv context e |> andThen (\(aType, outCtx, slack) ->
       case resolveTypeAlias typeEnv aType of
         Type_AlternativeProduct a _ ->
           Ok (a, outCtx, slack)
@@ -335,7 +371,7 @@ typeInferTerm typeEnv context term =
             ++ typeToString aType))
     
     Term_Snd e ->
-      typeInferTerm typeEnv context e |> andThen (\(aType, outCtx, slack) ->
+      typeInferTerm typeContext typeEnv context e |> andThen (\(aType, outCtx, slack) ->
       case resolveTypeAlias typeEnv aType of
         Type_AlternativeProduct _ b ->
           Ok (b, outCtx, slack)
@@ -348,25 +384,25 @@ typeInferTerm typeEnv context term =
       Ok (Type_Top, context, True)
     
     Term_Inl type2 e ->
-      checkType (envToContext typeEnv) type2 |> andThen (\_ ->
-      typeInferTerm typeEnv context e |> andThen (\(type1, outCtx, slack) ->
+      checkType typeContext type2 |> andThen (\_ ->
+      typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx, slack) ->
       Ok (Type_Sum type1 type2, outCtx, slack)))
     
     Term_Inr type1 e ->
-      checkType (envToContext typeEnv) type1 |> andThen (\_ ->
-      typeInferTerm typeEnv context e |> andThen (\(type2, outCtx, slack) ->
+      checkType typeContext type1 |> andThen (\_ ->
+      typeInferTerm typeContext typeEnv context e |> andThen (\(type2, outCtx, slack) ->
       Ok (Type_Sum type1 type2, outCtx, slack)))
 
     Term_Case e id1 e1 id2 e2 ->
-      typeInferTerm typeEnv context e |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx1, slack1) ->
       case resolveTypeAlias typeEnv type1 of
         Type_Sum a b ->
-          typeInferTerm typeEnv ((id1, (a, Linear True)) :: outCtx1) e1
+          typeInferTerm typeContext typeEnv ((id1, (a, Linear True)) :: outCtx1) e1
             |> andThen (\(type2, outCtx2, slack2) ->
           if (not slack2) && (isAvailable id1 outCtx2)
           then Err ("The linear variable " ++ id1 ++ " is not used")
           else
-            typeInferTerm typeEnv ((id2, (b, Linear True)) :: outCtx1) e2
+            typeInferTerm typeContext typeEnv ((id2, (b, Linear True)) :: outCtx1) e2
               |> andThen (\(type3, outCtx3, slack3) ->
             if (not slack3) && (isAvailable id2 outCtx3)
             then Err ("The linear variable " ++ id2 ++ " is not used")
@@ -390,8 +426,8 @@ typeInferTerm typeEnv context term =
           Err ("An expression of sum type was expected, but it has type " ++ typeToString type1))
     
     Term_Abort aType e ->
-      checkType (envToContext typeEnv) aType |> andThen (\_ ->
-      typeInferTerm typeEnv context e |> andThen (\(type1, outCtx, _) ->
+      checkType typeContext aType |> andThen (\_ ->
+      typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx, _) ->
       case resolveTypeAlias typeEnv type1 of
         Type_Zero ->
           Ok (aType, outCtx, True)
@@ -400,14 +436,14 @@ typeInferTerm typeEnv context term =
           Err ("An expression of type 0 was expected, but it has type " ++ typeToString type1)))
     
     Term_Bang e ->
-      typeInferTerm typeEnv (markAllAsUnavailable context) e |> andThen (\(aType, _, _) ->
+      typeInferTerm typeContext typeEnv (markAllAsUnavailable context) e |> andThen (\(aType, _, _) ->
       Ok (Type_OfCourse aType, context, False))
     
     Term_BangLet id e1 e2 ->
-      typeInferTerm typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
+      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
       case resolveTypeAlias typeEnv type1 of
         Type_OfCourse a ->
-          typeInferTerm typeEnv ((id, (a, Unrestricted)) :: outCtx1) e2
+          typeInferTerm typeContext typeEnv ((id, (a, Unrestricted)) :: outCtx1) e2
             |> andThen (\(type2, outCtx2, slack2) ->
           Ok (type2, List.drop 1 outCtx2, slack1 || slack2))
         
