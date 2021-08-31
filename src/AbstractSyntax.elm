@@ -61,7 +61,7 @@ typeToString aType =
       "0"
     
     Type_OfCourse type1 ->
-      "!" ++ typeToString type1
+      "@" ++ typeToString type1
 
 
 

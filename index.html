@@ -5592,17 +5592,20 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 			$elm$json$Json$Encode$string(string));
 	});
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Main$EvaluationError = F2(
+	function (a, b) {
+		return {$: 'EvaluationError', a: a, b: b};
+	});
+var $author$project$Main$Success = F3(
+	function (a, b, c) {
+		return {$: 'Success', a: a, b: b, c: c};
+	});
 var $author$project$Main$SyntaxError = function (a) {
 	return {$: 'SyntaxError', a: a};
 };
 var $author$project$Main$TypeError = F2(
 	function (a, b) {
 		return {$: 'TypeError', a: a, b: b};
-	});
-var $author$project$Evaluation$Value_Unit = {$: 'Value_Unit'};
-var $author$project$Main$WellTyped = F3(
-	function (a, b, c) {
-		return {$: 'WellTyped', a: a, b: b, c: c};
 	});
 var $elm$core$Maybe$andThen = F2(
 	function (callback, maybeValue) {
@@ -5636,6 +5639,7 @@ var $author$project$Evaluation$Value_SimultaneousPair = F2(
 		return {$: 'Value_SimultaneousPair', a: a, b: b};
 	});
 var $author$project$Evaluation$Value_Top = {$: 'Value_Top'};
+var $author$project$Evaluation$Value_Unit = {$: 'Value_Unit'};
 var $author$project$Evaluation$Value_UnrestrictedFn = F3(
 	function (a, b, c) {
 		return {$: 'Value_UnrestrictedFn', a: a, b: b, c: c};
@@ -5924,8 +5928,8 @@ var $author$project$Evaluation$evalDefEnv = F2(
 		}
 	});
 var $author$project$Evaluation$evalProgram = function (_v0) {
-	var defs = _v0.b;
-	var mainTerm = _v0.c;
+	var defs = _v0.defs;
+	var mainTerm = _v0.mainTerm;
 	return A2(
 		$elm$core$Maybe$andThen,
 		function (env) {
@@ -5997,201 +6001,6 @@ var $andre_dietrich$parser_combinators$Combine$andThen = F2(
 					}
 				}));
 	});
-var $author$project$AbstractSyntax$Term_Abort = F2(
-	function (a, b) {
-		return {$: 'Term_Abort', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_AlternativePair = F2(
-	function (a, b) {
-		return {$: 'Term_AlternativePair', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_Application = F2(
-	function (a, b) {
-		return {$: 'Term_Application', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_Bang = function (a) {
-	return {$: 'Term_Bang', a: a};
-};
-var $author$project$AbstractSyntax$Term_BangLet = F3(
-	function (a, b, c) {
-		return {$: 'Term_BangLet', a: a, b: b, c: c};
-	});
-var $author$project$AbstractSyntax$Term_Case = F5(
-	function (a, b, c, d, e) {
-		return {$: 'Term_Case', a: a, b: b, c: c, d: d, e: e};
-	});
-var $author$project$AbstractSyntax$Term_Fst = function (a) {
-	return {$: 'Term_Fst', a: a};
-};
-var $author$project$AbstractSyntax$Term_Inl = F2(
-	function (a, b) {
-		return {$: 'Term_Inl', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_Inr = F2(
-	function (a, b) {
-		return {$: 'Term_Inr', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_LinearLambda = F3(
-	function (a, b, c) {
-		return {$: 'Term_LinearLambda', a: a, b: b, c: c};
-	});
-var $author$project$AbstractSyntax$Term_SimultaneousLet = F4(
-	function (a, b, c, d) {
-		return {$: 'Term_SimultaneousLet', a: a, b: b, c: c, d: d};
-	});
-var $author$project$AbstractSyntax$Term_SimultaneousPair = F2(
-	function (a, b) {
-		return {$: 'Term_SimultaneousPair', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_Snd = function (a) {
-	return {$: 'Term_Snd', a: a};
-};
-var $author$project$AbstractSyntax$Term_UnitLet = F2(
-	function (a, b) {
-		return {$: 'Term_UnitLet', a: a, b: b};
-	});
-var $author$project$AbstractSyntax$Term_UnrestrictedLambda = F3(
-	function (a, b, c) {
-		return {$: 'Term_UnrestrictedLambda', a: a, b: b, c: c};
-	});
-var $elm$core$Basics$always = F2(
-	function (a, _v0) {
-		return a;
-	});
-var $pilatch$flip$Flip$flip = F3(
-	function (_function, argB, argA) {
-		return A2(_function, argA, argB);
-	});
-var $andre_dietrich$parser_combinators$Combine$bimap = F3(
-	function (fok, ferr, p) {
-		return $andre_dietrich$parser_combinators$Combine$Parser(
-			F2(
-				function (state, stream) {
-					var _v0 = A3($andre_dietrich$parser_combinators$Combine$app, p, state, stream);
-					if (_v0.c.$ === 'Ok') {
-						var rstate = _v0.a;
-						var rstream = _v0.b;
-						var res = _v0.c.a;
-						return _Utils_Tuple3(
-							rstate,
-							rstream,
-							$elm$core$Result$Ok(
-								fok(res)));
-					} else {
-						var estate = _v0.a;
-						var estream = _v0.b;
-						var ms = _v0.c.a;
-						return _Utils_Tuple3(
-							estate,
-							estream,
-							$elm$core$Result$Err(
-								ferr(ms)));
-					}
-				}));
-	});
-var $andre_dietrich$parser_combinators$Combine$map = F2(
-	function (f, p) {
-		return A3($andre_dietrich$parser_combinators$Combine$bimap, f, $elm$core$Basics$identity, p);
-	});
-var $andre_dietrich$parser_combinators$Combine$andMap = F2(
-	function (rp, lp) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$andThen,
-			A2($pilatch$flip$Flip$flip, $andre_dietrich$parser_combinators$Combine$map, rp),
-			lp);
-	});
-var $andre_dietrich$parser_combinators$Combine$ignore = F2(
-	function (p1, p2) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$andMap,
-			p1,
-			A2($andre_dietrich$parser_combinators$Combine$map, $elm$core$Basics$always, p2));
-	});
-var $andre_dietrich$parser_combinators$Combine$keep = F2(
-	function (p1, p2) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$andMap,
-			p1,
-			A2(
-				$andre_dietrich$parser_combinators$Combine$map,
-				$pilatch$flip$Flip$flip($elm$core$Basics$always),
-				p2));
-	});
-var $andre_dietrich$parser_combinators$Combine$between = F3(
-	function (lp, rp, p) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$ignore,
-			rp,
-			A2($andre_dietrich$parser_combinators$Combine$keep, p, lp));
-	});
-var $andre_dietrich$parser_combinators$Combine$or = F2(
-	function (lp, rp) {
-		return $andre_dietrich$parser_combinators$Combine$Parser(
-			F2(
-				function (state, stream) {
-					var _v0 = A3($andre_dietrich$parser_combinators$Combine$app, lp, state, stream);
-					if (_v0.c.$ === 'Ok') {
-						var res = _v0;
-						return res;
-					} else {
-						var lms = _v0.c.a;
-						var _v1 = A3($andre_dietrich$parser_combinators$Combine$app, rp, state, stream);
-						if (_v1.c.$ === 'Ok') {
-							var res = _v1;
-							return res;
-						} else {
-							var rms = _v1.c.a;
-							return _Utils_Tuple3(
-								state,
-								stream,
-								$elm$core$Result$Err(
-									_Utils_ap(lms, rms)));
-						}
-					}
-				}));
-	});
-var $andre_dietrich$parser_combinators$Combine$succeed = function (res) {
-	return $andre_dietrich$parser_combinators$Combine$Parser(
-		F2(
-			function (state, stream) {
-				return _Utils_Tuple3(
-					state,
-					stream,
-					$elm$core$Result$Ok(res));
-			}));
-};
-var $andre_dietrich$parser_combinators$Combine$chainl = F2(
-	function (op, p) {
-		var accumulate = function (x) {
-			return A2(
-				$andre_dietrich$parser_combinators$Combine$or,
-				A2(
-					$andre_dietrich$parser_combinators$Combine$andThen,
-					function (f) {
-						return A2(
-							$andre_dietrich$parser_combinators$Combine$andThen,
-							function (y) {
-								return accumulate(
-									A2(f, x, y));
-							},
-							p);
-					},
-					op),
-				$andre_dietrich$parser_combinators$Combine$succeed(x));
-		};
-		return A2($andre_dietrich$parser_combinators$Combine$andThen, accumulate, p);
-	});
-var $andre_dietrich$parser_combinators$Combine$emptyErr = $andre_dietrich$parser_combinators$Combine$Parser(
-	F2(
-		function (state, stream) {
-			return _Utils_Tuple3(
-				state,
-				stream,
-				$elm$core$Result$Err(_List_Nil));
-		}));
-var $andre_dietrich$parser_combinators$Combine$choice = function (xs) {
-	return A3($elm$core$List$foldr, $andre_dietrich$parser_combinators$Combine$or, $andre_dietrich$parser_combinators$Combine$emptyErr, xs);
-};
 var $andre_dietrich$parser_combinators$Combine$fail = function (m) {
 	return $andre_dietrich$parser_combinators$Combine$Parser(
 		F2(
@@ -6303,7 +6112,73 @@ var $andre_dietrich$parser_combinators$Combine$regex = A2(
 		}),
 	$andre_dietrich$parser_combinators$Combine$Parser);
 var $author$project$Parsing$reservedWords = _List_fromArray(
-	['let', 'in', 'fst', 'snd', 'inl', 'inr', 'case', 'of', 'abort', 'typedef', 'def', 'end', 'T']);
+	['let', 'in', 'fst', 'snd', 'inl', 'inr', 'case', 'of', 'abort', 'atomic', 'types', 'unrestricted', 'linear', 'context', 'typedef', 'def', 'end', 'T']);
+var $andre_dietrich$parser_combinators$Combine$succeed = function (res) {
+	return $andre_dietrich$parser_combinators$Combine$Parser(
+		F2(
+			function (state, stream) {
+				return _Utils_Tuple3(
+					state,
+					stream,
+					$elm$core$Result$Ok(res));
+			}));
+};
+var $elm$core$Basics$always = F2(
+	function (a, _v0) {
+		return a;
+	});
+var $pilatch$flip$Flip$flip = F3(
+	function (_function, argB, argA) {
+		return A2(_function, argA, argB);
+	});
+var $andre_dietrich$parser_combinators$Combine$bimap = F3(
+	function (fok, ferr, p) {
+		return $andre_dietrich$parser_combinators$Combine$Parser(
+			F2(
+				function (state, stream) {
+					var _v0 = A3($andre_dietrich$parser_combinators$Combine$app, p, state, stream);
+					if (_v0.c.$ === 'Ok') {
+						var rstate = _v0.a;
+						var rstream = _v0.b;
+						var res = _v0.c.a;
+						return _Utils_Tuple3(
+							rstate,
+							rstream,
+							$elm$core$Result$Ok(
+								fok(res)));
+					} else {
+						var estate = _v0.a;
+						var estream = _v0.b;
+						var ms = _v0.c.a;
+						return _Utils_Tuple3(
+							estate,
+							estream,
+							$elm$core$Result$Err(
+								ferr(ms)));
+					}
+				}));
+	});
+var $andre_dietrich$parser_combinators$Combine$map = F2(
+	function (f, p) {
+		return A3($andre_dietrich$parser_combinators$Combine$bimap, f, $elm$core$Basics$identity, p);
+	});
+var $andre_dietrich$parser_combinators$Combine$andMap = F2(
+	function (rp, lp) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andThen,
+			A2($pilatch$flip$Flip$flip, $andre_dietrich$parser_combinators$Combine$map, rp),
+			lp);
+	});
+var $andre_dietrich$parser_combinators$Combine$keep = F2(
+	function (p1, p2) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andMap,
+			p1,
+			A2(
+				$andre_dietrich$parser_combinators$Combine$map,
+				$pilatch$flip$Flip$flip($elm$core$Basics$always),
+				p2));
+	});
 var $andre_dietrich$parser_combinators$Combine$onsuccess = function (res) {
 	return $andre_dietrich$parser_combinators$Combine$map(
 		$elm$core$Basics$always(res));
@@ -6360,6 +6235,13 @@ var $andre_dietrich$parser_combinators$Combine$Char$anyChar = A2(
 	'expected any character',
 	$andre_dietrich$parser_combinators$Combine$Char$satisfy(
 		$elm$core$Basics$always(true)));
+var $andre_dietrich$parser_combinators$Combine$ignore = F2(
+	function (p1, p2) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andMap,
+			p1,
+			A2($andre_dietrich$parser_combinators$Combine$map, $elm$core$Basics$always, p2));
+	});
 var $andre_dietrich$parser_combinators$Combine$manyTill = F2(
 	function (p, end_) {
 		var accumulate = F3(
@@ -6435,6 +6317,32 @@ var $author$project$Parsing$multilineComment = A2(
 		$andre_dietrich$parser_combinators$Combine$string('-}')),
 	$andre_dietrich$parser_combinators$Combine$skip(
 		$andre_dietrich$parser_combinators$Combine$string('{-')));
+var $andre_dietrich$parser_combinators$Combine$or = F2(
+	function (lp, rp) {
+		return $andre_dietrich$parser_combinators$Combine$Parser(
+			F2(
+				function (state, stream) {
+					var _v0 = A3($andre_dietrich$parser_combinators$Combine$app, lp, state, stream);
+					if (_v0.c.$ === 'Ok') {
+						var res = _v0;
+						return res;
+					} else {
+						var lms = _v0.c.a;
+						var _v1 = A3($andre_dietrich$parser_combinators$Combine$app, rp, state, stream);
+						if (_v1.c.$ === 'Ok') {
+							var res = _v1;
+							return res;
+						} else {
+							var rms = _v1.c.a;
+							return _Utils_Tuple3(
+								state,
+								stream,
+								$elm$core$Result$Err(
+									_Utils_ap(lms, rms)));
+						}
+					}
+				}));
+	});
 var $author$project$Parsing$comment = A2($andre_dietrich$parser_combinators$Combine$or, $author$project$Parsing$inlineComment, $author$project$Parsing$multilineComment);
 var $andre_dietrich$parser_combinators$Combine$many = function (p) {
 	var accumulate = F3(
@@ -6504,6 +6412,175 @@ var $author$project$Parsing$identifier = A2(
 	},
 	$author$project$Parsing$token(
 		$andre_dietrich$parser_combinators$Combine$regex('[A-Za-z_][0-9A-Za-z_-]*')));
+var $andre_dietrich$parser_combinators$Combine$maybe = function (p) {
+	return $andre_dietrich$parser_combinators$Combine$Parser(
+		F2(
+			function (state, stream) {
+				var _v0 = A3($andre_dietrich$parser_combinators$Combine$app, p, state, stream);
+				if (_v0.c.$ === 'Ok') {
+					var rstate = _v0.a;
+					var rstream = _v0.b;
+					var res = _v0.c.a;
+					return _Utils_Tuple3(
+						rstate,
+						rstream,
+						$elm$core$Result$Ok(
+							$elm$core$Maybe$Just(res)));
+				} else {
+					return _Utils_Tuple3(
+						state,
+						stream,
+						$elm$core$Result$Ok($elm$core$Maybe$Nothing));
+				}
+			}));
+};
+var $andre_dietrich$parser_combinators$Combine$sepBy1 = F2(
+	function (sep, p) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andMap,
+			$andre_dietrich$parser_combinators$Combine$many(
+				A2($andre_dietrich$parser_combinators$Combine$keep, p, sep)),
+			A2($andre_dietrich$parser_combinators$Combine$map, $elm$core$List$cons, p));
+	});
+var $andre_dietrich$parser_combinators$Combine$sepEndBy1 = F2(
+	function (sep, p) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$ignore,
+			$andre_dietrich$parser_combinators$Combine$maybe(sep),
+			A2($andre_dietrich$parser_combinators$Combine$sepBy1, sep, p));
+	});
+var $andre_dietrich$parser_combinators$Combine$sepEndBy = F2(
+	function (sep, p) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$or,
+			A2($andre_dietrich$parser_combinators$Combine$sepEndBy1, sep, p),
+			$andre_dietrich$parser_combinators$Combine$succeed(_List_Nil));
+	});
+var $author$project$Parsing$atomicTypesList = A2(
+	$andre_dietrich$parser_combinators$Combine$sepEndBy,
+	$author$project$Parsing$token(
+		$andre_dietrich$parser_combinators$Combine$string(';')),
+	$author$project$Parsing$identifier);
+var $author$project$Parsing$atomicTypesClause = A2(
+	$andre_dietrich$parser_combinators$Combine$andThen,
+	function (_v0) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andThen,
+			function (_v1) {
+				return A2(
+					$andre_dietrich$parser_combinators$Combine$andThen,
+					function (atomicTypes) {
+						return A2(
+							$andre_dietrich$parser_combinators$Combine$andThen,
+							function (_v2) {
+								return $andre_dietrich$parser_combinators$Combine$succeed(atomicTypes);
+							},
+							$author$project$Parsing$token(
+								$andre_dietrich$parser_combinators$Combine$string('end')));
+					},
+					$author$project$Parsing$atomicTypesList);
+			},
+			$author$project$Parsing$token(
+				$andre_dietrich$parser_combinators$Combine$string('types')));
+	},
+	$author$project$Parsing$token(
+		$andre_dietrich$parser_combinators$Combine$string('atomic')));
+var $author$project$AbstractSyntax$Term_Abort = F2(
+	function (a, b) {
+		return {$: 'Term_Abort', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_AlternativePair = F2(
+	function (a, b) {
+		return {$: 'Term_AlternativePair', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_Application = F2(
+	function (a, b) {
+		return {$: 'Term_Application', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_Bang = function (a) {
+	return {$: 'Term_Bang', a: a};
+};
+var $author$project$AbstractSyntax$Term_BangLet = F3(
+	function (a, b, c) {
+		return {$: 'Term_BangLet', a: a, b: b, c: c};
+	});
+var $author$project$AbstractSyntax$Term_Case = F5(
+	function (a, b, c, d, e) {
+		return {$: 'Term_Case', a: a, b: b, c: c, d: d, e: e};
+	});
+var $author$project$AbstractSyntax$Term_Fst = function (a) {
+	return {$: 'Term_Fst', a: a};
+};
+var $author$project$AbstractSyntax$Term_Inl = F2(
+	function (a, b) {
+		return {$: 'Term_Inl', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_Inr = F2(
+	function (a, b) {
+		return {$: 'Term_Inr', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_LinearLambda = F3(
+	function (a, b, c) {
+		return {$: 'Term_LinearLambda', a: a, b: b, c: c};
+	});
+var $author$project$AbstractSyntax$Term_SimultaneousLet = F4(
+	function (a, b, c, d) {
+		return {$: 'Term_SimultaneousLet', a: a, b: b, c: c, d: d};
+	});
+var $author$project$AbstractSyntax$Term_SimultaneousPair = F2(
+	function (a, b) {
+		return {$: 'Term_SimultaneousPair', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_Snd = function (a) {
+	return {$: 'Term_Snd', a: a};
+};
+var $author$project$AbstractSyntax$Term_UnitLet = F2(
+	function (a, b) {
+		return {$: 'Term_UnitLet', a: a, b: b};
+	});
+var $author$project$AbstractSyntax$Term_UnrestrictedLambda = F3(
+	function (a, b, c) {
+		return {$: 'Term_UnrestrictedLambda', a: a, b: b, c: c};
+	});
+var $andre_dietrich$parser_combinators$Combine$between = F3(
+	function (lp, rp, p) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$ignore,
+			rp,
+			A2($andre_dietrich$parser_combinators$Combine$keep, p, lp));
+	});
+var $andre_dietrich$parser_combinators$Combine$chainl = F2(
+	function (op, p) {
+		var accumulate = function (x) {
+			return A2(
+				$andre_dietrich$parser_combinators$Combine$or,
+				A2(
+					$andre_dietrich$parser_combinators$Combine$andThen,
+					function (f) {
+						return A2(
+							$andre_dietrich$parser_combinators$Combine$andThen,
+							function (y) {
+								return accumulate(
+									A2(f, x, y));
+							},
+							p);
+					},
+					op),
+				$andre_dietrich$parser_combinators$Combine$succeed(x));
+		};
+		return A2($andre_dietrich$parser_combinators$Combine$andThen, accumulate, p);
+	});
+var $andre_dietrich$parser_combinators$Combine$emptyErr = $andre_dietrich$parser_combinators$Combine$Parser(
+	F2(
+		function (state, stream) {
+			return _Utils_Tuple3(
+				state,
+				stream,
+				$elm$core$Result$Err(_List_Nil));
+		}));
+var $andre_dietrich$parser_combinators$Combine$choice = function (xs) {
+	return A3($elm$core$List$foldr, $andre_dietrich$parser_combinators$Combine$or, $andre_dietrich$parser_combinators$Combine$emptyErr, xs);
+};
 var $andre_dietrich$parser_combinators$Combine$lazy = function (t) {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
@@ -6667,7 +6744,7 @@ function $author$project$Parsing$cyclic$typeOfCourse() {
 				$author$project$Parsing$cyclic$typeAtom());
 		},
 		$author$project$Parsing$token(
-			$andre_dietrich$parser_combinators$Combine$string('!')));
+			$andre_dietrich$parser_combinators$Combine$string('@')));
 }
 try {
 	var $author$project$Parsing$typeExpr = $author$project$Parsing$cyclic$typeExpr();
@@ -6698,10 +6775,18 @@ try {
 	throw 'Some top-level definitions from `Parsing` are causing infinite recursion:\n\n  ┌─────┐\n  │    typeExpr\n  │     ↓\n  │    additiveChain\n  │     ↓\n  │    multiplicativeChain\n  │     ↓\n  │    typeAtom\n  │     ↓\n  │    typeBetweenParens\n  │     ↓\n  │    typeOfCourse\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $author$project$AbstractSyntax$Term_Unit = {$: 'Term_Unit'};
 var $author$project$Parsing$unit = A2(
-	$andre_dietrich$parser_combinators$Combine$onsuccess,
-	$author$project$AbstractSyntax$Term_Unit,
+	$andre_dietrich$parser_combinators$Combine$andThen,
+	function (_v0) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andThen,
+			function (_v1) {
+				return $andre_dietrich$parser_combinators$Combine$succeed($author$project$AbstractSyntax$Term_Unit);
+			},
+			$author$project$Parsing$token(
+				$andre_dietrich$parser_combinators$Combine$string('}')));
+	},
 	$author$project$Parsing$token(
-		$andre_dietrich$parser_combinators$Combine$string('*')));
+		$andre_dietrich$parser_combinators$Combine$string('{')));
 var $author$project$AbstractSyntax$Term_Var = function (a) {
 	return {$: 'Term_Var', a: a};
 };
@@ -6739,16 +6824,16 @@ function $author$project$Parsing$cyclic$atom() {
 function $author$project$Parsing$cyclic$abort() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v43) {
+		function (_v48) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (_v44) {
+				function (_v49) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
 						function (aType) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (_v45) {
+								function (_v50) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (e) {
@@ -6771,19 +6856,19 @@ function $author$project$Parsing$cyclic$abort() {
 function $author$project$Parsing$cyclic$alternativePair() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v40) {
+		function (_v45) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
 				function (e1) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
-						function (_v41) {
+						function (_v46) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
 								function (e2) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
-										function (_v42) {
+										function (_v47) {
 											return $andre_dietrich$parser_combinators$Combine$succeed(
 												A2($author$project$AbstractSyntax$Term_AlternativePair, e1, e2));
 										},
@@ -6803,7 +6888,7 @@ function $author$project$Parsing$cyclic$alternativePair() {
 function $author$project$Parsing$cyclic$bang() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v39) {
+		function (_v44) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
 				function (e) {
@@ -6813,27 +6898,27 @@ function $author$project$Parsing$cyclic$bang() {
 				$author$project$Parsing$cyclic$atom());
 		},
 		$author$project$Parsing$token(
-			$andre_dietrich$parser_combinators$Combine$string('!')));
+			$andre_dietrich$parser_combinators$Combine$string('@')));
 }
 function $author$project$Parsing$cyclic$bangLet() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v35) {
+		function (_v40) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (_v36) {
+				function (_v41) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
 						function (id) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (_v37) {
+								function (_v42) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (e1) {
 											return A2(
 												$andre_dietrich$parser_combinators$Combine$andThen,
-												function (_v38) {
+												function (_v43) {
 													return A2(
 														$andre_dietrich$parser_combinators$Combine$andThen,
 														function (e2) {
@@ -6853,7 +6938,7 @@ function $author$project$Parsing$cyclic$bangLet() {
 						$author$project$Parsing$identifier);
 				},
 				$author$project$Parsing$token(
-					$andre_dietrich$parser_combinators$Combine$string('!')));
+					$andre_dietrich$parser_combinators$Combine$string('@')));
 		},
 		$author$project$Parsing$token(
 			$andre_dietrich$parser_combinators$Combine$string('let')));
@@ -6861,37 +6946,37 @@ function $author$project$Parsing$cyclic$bangLet() {
 function $author$project$Parsing$cyclic$caseExpr() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v28) {
+		function (_v33) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
 				function (e) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
-						function (_v29) {
+						function (_v34) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (_v30) {
+								function (_v35) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (id1) {
 											return A2(
 												$andre_dietrich$parser_combinators$Combine$andThen,
-												function (_v31) {
+												function (_v36) {
 													return A2(
 														$andre_dietrich$parser_combinators$Combine$andThen,
 														function (e1) {
 															return A2(
 																$andre_dietrich$parser_combinators$Combine$andThen,
-																function (_v32) {
+																function (_v37) {
 																	return A2(
 																		$andre_dietrich$parser_combinators$Combine$andThen,
-																		function (_v33) {
+																		function (_v38) {
 																			return A2(
 																				$andre_dietrich$parser_combinators$Combine$andThen,
 																				function (id2) {
 																					return A2(
 																						$andre_dietrich$parser_combinators$Combine$andThen,
-																						function (_v34) {
+																						function (_v39) {
 																							return A2(
 																								$andre_dietrich$parser_combinators$Combine$andThen,
 																								function (e2) {
@@ -6901,7 +6986,7 @@ function $author$project$Parsing$cyclic$caseExpr() {
 																								$author$project$Parsing$cyclic$expression());
 																						},
 																						$author$project$Parsing$token(
-																							$andre_dietrich$parser_combinators$Combine$string('=>')));
+																							$andre_dietrich$parser_combinators$Combine$string('->')));
 																				},
 																				$author$project$Parsing$identifier);
 																		},
@@ -6909,12 +6994,12 @@ function $author$project$Parsing$cyclic$caseExpr() {
 																			$andre_dietrich$parser_combinators$Combine$string('inr')));
 																},
 																$author$project$Parsing$token(
-																	$andre_dietrich$parser_combinators$Combine$string('|')));
+																	$andre_dietrich$parser_combinators$Combine$string(';')));
 														},
 														$author$project$Parsing$cyclic$expression());
 												},
 												$author$project$Parsing$token(
-													$andre_dietrich$parser_combinators$Combine$string('=>')));
+													$andre_dietrich$parser_combinators$Combine$string('->')));
 										},
 										$author$project$Parsing$identifier);
 								},
@@ -6937,14 +7022,14 @@ function $author$project$Parsing$cyclic$exprBetweenParens() {
 		$author$project$Parsing$token(
 			$andre_dietrich$parser_combinators$Combine$string(')')),
 		$andre_dietrich$parser_combinators$Combine$lazy(
-			function (_v27) {
+			function (_v32) {
 				return $author$project$Parsing$cyclic$expression();
 			}));
 }
 function $author$project$Parsing$cyclic$fst() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v26) {
+		function (_v31) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
 				function (e) {
@@ -6959,16 +7044,16 @@ function $author$project$Parsing$cyclic$fst() {
 function $author$project$Parsing$cyclic$inl() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v23) {
+		function (_v28) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (_v24) {
+				function (_v29) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
 						function (aType) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (_v25) {
+								function (_v30) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (e) {
@@ -6991,16 +7076,16 @@ function $author$project$Parsing$cyclic$inl() {
 function $author$project$Parsing$cyclic$inr() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v20) {
+		function (_v25) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (_v21) {
+				function (_v26) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
 						function (aType) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (_v22) {
+								function (_v27) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (e) {
@@ -7023,68 +7108,80 @@ function $author$project$Parsing$cyclic$inr() {
 function $author$project$Parsing$cyclic$linearLambda() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v17) {
+		function (_v20) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (id) {
+				function (_v21) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
-						function (_v18) {
+						function (id) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (aType) {
+								function (_v22) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
-										function (_v19) {
+										function (aType) {
 											return A2(
 												$andre_dietrich$parser_combinators$Combine$andThen,
-												function (exp) {
-													return $andre_dietrich$parser_combinators$Combine$succeed(
-														A3($author$project$AbstractSyntax$Term_LinearLambda, id, aType, exp));
+												function (_v23) {
+													return A2(
+														$andre_dietrich$parser_combinators$Combine$andThen,
+														function (_v24) {
+															return A2(
+																$andre_dietrich$parser_combinators$Combine$andThen,
+																function (exp) {
+																	return $andre_dietrich$parser_combinators$Combine$succeed(
+																		A3($author$project$AbstractSyntax$Term_LinearLambda, id, aType, exp));
+																},
+																$author$project$Parsing$cyclic$expression());
+														},
+														$author$project$Parsing$token(
+															$andre_dietrich$parser_combinators$Combine$string('.')));
 												},
-												$author$project$Parsing$cyclic$expression());
+												$author$project$Parsing$token(
+													$andre_dietrich$parser_combinators$Combine$string('>')));
 										},
-										$author$project$Parsing$token(
-											$andre_dietrich$parser_combinators$Combine$string('.')));
+										$author$project$Parsing$typeExpr);
 								},
-								$author$project$Parsing$typeExpr);
+								$author$project$Parsing$token(
+									$andre_dietrich$parser_combinators$Combine$string(':')));
 						},
-						$author$project$Parsing$token(
-							$andre_dietrich$parser_combinators$Combine$string(':')));
+						$author$project$Parsing$identifier);
 				},
-				$author$project$Parsing$identifier);
+				$author$project$Parsing$token(
+					$andre_dietrich$parser_combinators$Combine$string('<')));
 		},
 		$author$project$Parsing$token(
-			$andre_dietrich$parser_combinators$Combine$string('\\^')));
+			$andre_dietrich$parser_combinators$Combine$string('\\')));
 }
 function $author$project$Parsing$cyclic$simultaneousLet() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v11) {
+		function (_v14) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (_v12) {
+				function (_v15) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
 						function (id1) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (_v13) {
+								function (_v16) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (id2) {
 											return A2(
 												$andre_dietrich$parser_combinators$Combine$andThen,
-												function (_v14) {
+												function (_v17) {
 													return A2(
 														$andre_dietrich$parser_combinators$Combine$andThen,
-														function (_v15) {
+														function (_v18) {
 															return A2(
 																$andre_dietrich$parser_combinators$Combine$andThen,
 																function (e1) {
 																	return A2(
 																		$andre_dietrich$parser_combinators$Combine$andThen,
-																		function (_v16) {
+																		function (_v19) {
 																			return A2(
 																				$andre_dietrich$parser_combinators$Combine$andThen,
 																				function (e2) {
@@ -7120,19 +7217,19 @@ function $author$project$Parsing$cyclic$simultaneousLet() {
 function $author$project$Parsing$cyclic$simultaneousPair() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v8) {
+		function (_v11) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
 				function (e1) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
-						function (_v9) {
+						function (_v12) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
 								function (e2) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
-										function (_v10) {
+										function (_v13) {
 											return $andre_dietrich$parser_combinators$Combine$succeed(
 												A2($author$project$AbstractSyntax$Term_SimultaneousPair, e1, e2));
 										},
@@ -7152,7 +7249,7 @@ function $author$project$Parsing$cyclic$simultaneousPair() {
 function $author$project$Parsing$cyclic$snd() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v7) {
+		function (_v10) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
 				function (e) {
@@ -7167,37 +7264,43 @@ function $author$project$Parsing$cyclic$snd() {
 function $author$project$Parsing$cyclic$unitLet() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
-		function (_v3) {
+		function (_v5) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (_v4) {
+				function (_v6) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
-						function (_v5) {
+						function (_v7) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (e1) {
+								function (_v8) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
-										function (_v6) {
+										function (e1) {
 											return A2(
 												$andre_dietrich$parser_combinators$Combine$andThen,
-												function (e2) {
-													return $andre_dietrich$parser_combinators$Combine$succeed(
-														A2($author$project$AbstractSyntax$Term_UnitLet, e1, e2));
+												function (_v9) {
+													return A2(
+														$andre_dietrich$parser_combinators$Combine$andThen,
+														function (e2) {
+															return $andre_dietrich$parser_combinators$Combine$succeed(
+																A2($author$project$AbstractSyntax$Term_UnitLet, e1, e2));
+														},
+														$author$project$Parsing$cyclic$expression());
 												},
-												$author$project$Parsing$cyclic$expression());
+												$author$project$Parsing$token(
+													$andre_dietrich$parser_combinators$Combine$string('in')));
 										},
-										$author$project$Parsing$token(
-											$andre_dietrich$parser_combinators$Combine$string('in')));
+										$author$project$Parsing$cyclic$expression());
 								},
-								$author$project$Parsing$cyclic$expression());
+								$author$project$Parsing$token(
+									$andre_dietrich$parser_combinators$Combine$string('=')));
 						},
 						$author$project$Parsing$token(
-							$andre_dietrich$parser_combinators$Combine$string('=')));
+							$andre_dietrich$parser_combinators$Combine$string('}')));
 				},
 				$author$project$Parsing$token(
-					$andre_dietrich$parser_combinators$Combine$string('*')));
+					$andre_dietrich$parser_combinators$Combine$string('{')));
 		},
 		$author$project$Parsing$token(
 			$andre_dietrich$parser_combinators$Combine$string('let')));
@@ -7208,33 +7311,45 @@ function $author$project$Parsing$cyclic$unrestrictedLambda() {
 		function (_v0) {
 			return A2(
 				$andre_dietrich$parser_combinators$Combine$andThen,
-				function (id) {
+				function (_v1) {
 					return A2(
 						$andre_dietrich$parser_combinators$Combine$andThen,
-						function (_v1) {
+						function (id) {
 							return A2(
 								$andre_dietrich$parser_combinators$Combine$andThen,
-								function (aType) {
+								function (_v2) {
 									return A2(
 										$andre_dietrich$parser_combinators$Combine$andThen,
-										function (_v2) {
+										function (aType) {
 											return A2(
 												$andre_dietrich$parser_combinators$Combine$andThen,
-												function (exp) {
-													return $andre_dietrich$parser_combinators$Combine$succeed(
-														A3($author$project$AbstractSyntax$Term_UnrestrictedLambda, id, aType, exp));
+												function (_v3) {
+													return A2(
+														$andre_dietrich$parser_combinators$Combine$andThen,
+														function (_v4) {
+															return A2(
+																$andre_dietrich$parser_combinators$Combine$andThen,
+																function (exp) {
+																	return $andre_dietrich$parser_combinators$Combine$succeed(
+																		A3($author$project$AbstractSyntax$Term_UnrestrictedLambda, id, aType, exp));
+																},
+																$author$project$Parsing$cyclic$expression());
+														},
+														$author$project$Parsing$token(
+															$andre_dietrich$parser_combinators$Combine$string('.')));
 												},
-												$author$project$Parsing$cyclic$expression());
+												$author$project$Parsing$token(
+													$andre_dietrich$parser_combinators$Combine$string(']')));
 										},
-										$author$project$Parsing$token(
-											$andre_dietrich$parser_combinators$Combine$string('.')));
+										$author$project$Parsing$typeExpr);
 								},
-								$author$project$Parsing$typeExpr);
+								$author$project$Parsing$token(
+									$andre_dietrich$parser_combinators$Combine$string(':')));
 						},
-						$author$project$Parsing$token(
-							$andre_dietrich$parser_combinators$Combine$string(':')));
+						$author$project$Parsing$identifier);
 				},
-				$author$project$Parsing$identifier);
+				$author$project$Parsing$token(
+					$andre_dietrich$parser_combinators$Combine$string('[')));
 		},
 		$author$project$Parsing$token(
 			$andre_dietrich$parser_combinators$Combine$string('\\')));
@@ -7310,28 +7425,6 @@ try {
 	};
 } catch ($) {
 	throw 'Some top-level definitions from `Parsing` are causing infinite recursion:\n\n  ┌─────┐\n  │    expression\n  │     ↓\n  │    atom\n  │     ↓\n  │    abort\n  │     ↓\n  │    alternativePair\n  │     ↓\n  │    bang\n  │     ↓\n  │    bangLet\n  │     ↓\n  │    caseExpr\n  │     ↓\n  │    exprBetweenParens\n  │     ↓\n  │    fst\n  │     ↓\n  │    inl\n  │     ↓\n  │    inr\n  │     ↓\n  │    linearLambda\n  │     ↓\n  │    simultaneousLet\n  │     ↓\n  │    simultaneousPair\n  │     ↓\n  │    snd\n  │     ↓\n  │    unitLet\n  │     ↓\n  │    unrestrictedLambda\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
-var $andre_dietrich$parser_combinators$Combine$maybe = function (p) {
-	return $andre_dietrich$parser_combinators$Combine$Parser(
-		F2(
-			function (state, stream) {
-				var _v0 = A3($andre_dietrich$parser_combinators$Combine$app, p, state, stream);
-				if (_v0.c.$ === 'Ok') {
-					var rstate = _v0.a;
-					var rstream = _v0.b;
-					var res = _v0.c.a;
-					return _Utils_Tuple3(
-						rstate,
-						rstream,
-						$elm$core$Result$Ok(
-							$elm$core$Maybe$Just(res)));
-				} else {
-					return _Utils_Tuple3(
-						state,
-						stream,
-						$elm$core$Result$Ok($elm$core$Maybe$Nothing));
-				}
-			}));
-};
 var $author$project$Parsing$typeAnnotation = A2(
 	$andre_dietrich$parser_combinators$Combine$andThen,
 	function (_v0) {
@@ -7362,28 +7455,6 @@ var $author$project$Parsing$definition = A2(
 			$andre_dietrich$parser_combinators$Combine$maybe($author$project$Parsing$typeAnnotation));
 	},
 	$author$project$Parsing$identifier);
-var $andre_dietrich$parser_combinators$Combine$sepBy1 = F2(
-	function (sep, p) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$andMap,
-			$andre_dietrich$parser_combinators$Combine$many(
-				A2($andre_dietrich$parser_combinators$Combine$keep, p, sep)),
-			A2($andre_dietrich$parser_combinators$Combine$map, $elm$core$List$cons, p));
-	});
-var $andre_dietrich$parser_combinators$Combine$sepEndBy1 = F2(
-	function (sep, p) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$ignore,
-			$andre_dietrich$parser_combinators$Combine$maybe(sep),
-			A2($andre_dietrich$parser_combinators$Combine$sepBy1, sep, p));
-	});
-var $andre_dietrich$parser_combinators$Combine$sepEndBy = F2(
-	function (sep, p) {
-		return A2(
-			$andre_dietrich$parser_combinators$Combine$or,
-			A2($andre_dietrich$parser_combinators$Combine$sepEndBy1, sep, p),
-			$andre_dietrich$parser_combinators$Combine$succeed(_List_Nil));
-	});
 var $author$project$Parsing$defList = A2(
 	$andre_dietrich$parser_combinators$Combine$sepEndBy,
 	$author$project$Parsing$token(
@@ -7420,6 +7491,53 @@ var $andre_dietrich$parser_combinators$Combine$end = $andre_dietrich$parser_comb
 					_List_fromArray(
 						['expected end of input'])));
 		}));
+var $author$project$Parsing$contextDeclaration = A2(
+	$andre_dietrich$parser_combinators$Combine$andThen,
+	function (id) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andThen,
+			function (_v0) {
+				return A2(
+					$andre_dietrich$parser_combinators$Combine$andThen,
+					function (aType) {
+						return $andre_dietrich$parser_combinators$Combine$succeed(
+							_Utils_Tuple2(id, aType));
+					},
+					$author$project$Parsing$typeExpr);
+			},
+			$author$project$Parsing$token(
+				$andre_dietrich$parser_combinators$Combine$string(':')));
+	},
+	$author$project$Parsing$identifier);
+var $author$project$Parsing$contextList = A2(
+	$andre_dietrich$parser_combinators$Combine$sepEndBy,
+	$author$project$Parsing$token(
+		$andre_dietrich$parser_combinators$Combine$string(';')),
+	$author$project$Parsing$contextDeclaration);
+var $author$project$Parsing$linearContextClause = A2(
+	$andre_dietrich$parser_combinators$Combine$andThen,
+	function (_v0) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andThen,
+			function (_v1) {
+				return A2(
+					$andre_dietrich$parser_combinators$Combine$andThen,
+					function (context) {
+						return A2(
+							$andre_dietrich$parser_combinators$Combine$andThen,
+							function (_v2) {
+								return $andre_dietrich$parser_combinators$Combine$succeed(context);
+							},
+							$author$project$Parsing$token(
+								$andre_dietrich$parser_combinators$Combine$string('end')));
+					},
+					$author$project$Parsing$contextList);
+			},
+			$author$project$Parsing$token(
+				$andre_dietrich$parser_combinators$Combine$string('context')));
+	},
+	$author$project$Parsing$token(
+		$andre_dietrich$parser_combinators$Combine$string('linear')));
 var $andre_dietrich$parser_combinators$Combine$optional = F2(
 	function (res, p) {
 		return A2(
@@ -7468,33 +7586,72 @@ var $author$project$Parsing$typedefClause = A2(
 	},
 	$author$project$Parsing$token(
 		$andre_dietrich$parser_combinators$Combine$string('typedef')));
-var $author$project$Parsing$programParser = A2(
+var $author$project$Parsing$unrestrictedContextClause = A2(
 	$andre_dietrich$parser_combinators$Combine$andThen,
-	function (typeEnv) {
+	function (_v0) {
 		return A2(
 			$andre_dietrich$parser_combinators$Combine$andThen,
-			function (defEnv) {
+			function (_v1) {
 				return A2(
 					$andre_dietrich$parser_combinators$Combine$andThen,
-					function (mainTerm) {
+					function (context) {
 						return A2(
 							$andre_dietrich$parser_combinators$Combine$andThen,
-							function (_v0) {
+							function (_v2) {
+								return $andre_dietrich$parser_combinators$Combine$succeed(context);
+							},
+							$author$project$Parsing$token(
+								$andre_dietrich$parser_combinators$Combine$string('end')));
+					},
+					$author$project$Parsing$contextList);
+			},
+			$author$project$Parsing$token(
+				$andre_dietrich$parser_combinators$Combine$string('context')));
+	},
+	$author$project$Parsing$token(
+		$andre_dietrich$parser_combinators$Combine$string('unrestricted')));
+var $author$project$Parsing$programParser = A2(
+	$andre_dietrich$parser_combinators$Combine$andThen,
+	function (atomicTypes) {
+		return A2(
+			$andre_dietrich$parser_combinators$Combine$andThen,
+			function (typedefs) {
+				return A2(
+					$andre_dietrich$parser_combinators$Combine$andThen,
+					function (unrestrictedContext) {
+						return A2(
+							$andre_dietrich$parser_combinators$Combine$andThen,
+							function (linearContext) {
 								return A2(
 									$andre_dietrich$parser_combinators$Combine$andThen,
-									function (_v1) {
-										return $andre_dietrich$parser_combinators$Combine$succeed(
-											_Utils_Tuple3(typeEnv, defEnv, mainTerm));
+									function (defs) {
+										return A2(
+											$andre_dietrich$parser_combinators$Combine$andThen,
+											function (mainTerm) {
+												return A2(
+													$andre_dietrich$parser_combinators$Combine$andThen,
+													function (_v0) {
+														return A2(
+															$andre_dietrich$parser_combinators$Combine$andThen,
+															function (_v1) {
+																return $andre_dietrich$parser_combinators$Combine$succeed(
+																	{atomicTypes: atomicTypes, defs: defs, linearContext: linearContext, mainTerm: mainTerm, typedefs: typedefs, unrestrictedContext: unrestrictedContext});
+															},
+															$andre_dietrich$parser_combinators$Combine$end);
+													},
+													$author$project$Parsing$whitespaceOrComments);
+											},
+											$author$project$Parsing$expression);
 									},
-									$andre_dietrich$parser_combinators$Combine$end);
+									A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$defClause));
 							},
-							$author$project$Parsing$whitespaceOrComments);
+							A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$linearContextClause));
 					},
-					$author$project$Parsing$expression);
+					A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$unrestrictedContextClause));
 			},
-			A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$defClause));
+			A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$typedefClause));
 	},
-	A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$typedefClause));
+	A2($andre_dietrich$parser_combinators$Combine$optional, _List_Nil, $author$project$Parsing$atomicTypesClause));
 var $author$project$Parsing$parseProgram = function (input) {
 	var _v0 = A2($andre_dietrich$parser_combinators$Combine$parse, $author$project$Parsing$programParser, input);
 	if (_v0.$ === 'Ok') {
@@ -7507,6 +7664,10 @@ var $author$project$Parsing$parseProgram = function (input) {
 		return $elm$core$Result$Err(errors);
 	}
 };
+var $author$project$TypeInference$Linear = function (a) {
+	return {$: 'Linear', a: a};
+};
+var $author$project$TypeInference$Unrestricted = {$: 'Unrestricted'};
 var $elm$core$Result$andThen = F2(
 	function (callback, result) {
 		if (result.$ === 'Ok') {
@@ -7517,41 +7678,61 @@ var $elm$core$Result$andThen = F2(
 			return $elm$core$Result$Err(msg);
 		}
 	});
+var $author$project$TypeInference$checkOutContext = function (outCtx) {
+	checkOutContext:
+	while (true) {
+		if (!outCtx.b) {
+			return $elm$core$Result$Ok(_Utils_Tuple0);
+		} else {
+			if ((outCtx.a.b.b.$ === 'Linear') && outCtx.a.b.b.a) {
+				var _v1 = outCtx.a;
+				var id = _v1.a;
+				var _v2 = _v1.b;
+				return $elm$core$Result$Err('The linear variable ' + (id + ' is not used'));
+			} else {
+				var xs = outCtx.b;
+				var $temp$outCtx = xs;
+				outCtx = $temp$outCtx;
+				continue checkOutContext;
+			}
+		}
+	}
+};
 var $author$project$TypeInference$checkType = F2(
-	function (context, aType) {
+	function (typeContext, aType) {
 		checkType:
 		while (true) {
 			switch (aType.$) {
 				case 'Type_Constant':
 					var id = aType.a;
-					return A2($elm$core$List$member, id, context) ? $elm$core$Result$Ok(_Utils_Tuple0) : $elm$core$Result$Err('The type ' + (id + ' was not defined'));
+					return A2($elm$core$List$member, id, typeContext) ? $elm$core$Result$Ok(_Utils_Tuple0) : $elm$core$Result$Err('The type ' + (id + ' was not declared'));
 				case 'Type_LinearFn':
 					var t1 = aType.a;
 					var t2 = aType.b;
 					return A2(
 						$elm$core$Result$andThen,
 						function (_v1) {
-							return A2($author$project$TypeInference$checkType, context, t2);
+							return A2($author$project$TypeInference$checkType, typeContext, t2);
 						},
-						A2($author$project$TypeInference$checkType, context, t1));
+						A2($author$project$TypeInference$checkType, typeContext, t1));
 				case 'Type_UnrestrictedFn':
 					var t1 = aType.a;
 					var t2 = aType.b;
 					return A2(
 						$elm$core$Result$andThen,
 						function (_v2) {
-							return A2($author$project$TypeInference$checkType, context, t2);
+							return A2($author$project$TypeInference$checkType, typeContext, t2);
 						},
-						A2($author$project$TypeInference$checkType, context, t1));
+						A2($author$project$TypeInference$checkType, typeContext, t1));
 				case 'Type_SimultaneousProduct':
 					var t1 = aType.a;
 					var t2 = aType.b;
 					return A2(
 						$elm$core$Result$andThen,
 						function (_v3) {
-							return A2($author$project$TypeInference$checkType, context, t2);
+							return A2($author$project$TypeInference$checkType, typeContext, t2);
 						},
-						A2($author$project$TypeInference$checkType, context, t1));
+						A2($author$project$TypeInference$checkType, typeContext, t1));
 				case 'Type_Unit':
 					return $elm$core$Result$Ok(_Utils_Tuple0);
 				case 'Type_AlternativeProduct':
@@ -7560,9 +7741,9 @@ var $author$project$TypeInference$checkType = F2(
 					return A2(
 						$elm$core$Result$andThen,
 						function (_v4) {
-							return A2($author$project$TypeInference$checkType, context, t2);
+							return A2($author$project$TypeInference$checkType, typeContext, t2);
 						},
-						A2($author$project$TypeInference$checkType, context, t1));
+						A2($author$project$TypeInference$checkType, typeContext, t1));
 				case 'Type_Top':
 					return $elm$core$Result$Ok(_Utils_Tuple0);
 				case 'Type_Sum':
@@ -7571,16 +7752,16 @@ var $author$project$TypeInference$checkType = F2(
 					return A2(
 						$elm$core$Result$andThen,
 						function (_v5) {
-							return A2($author$project$TypeInference$checkType, context, t2);
+							return A2($author$project$TypeInference$checkType, typeContext, t2);
 						},
-						A2($author$project$TypeInference$checkType, context, t1));
+						A2($author$project$TypeInference$checkType, typeContext, t1));
 				case 'Type_Zero':
 					return $elm$core$Result$Ok(_Utils_Tuple0);
 				default:
 					var t1 = aType.a;
-					var $temp$context = context,
+					var $temp$typeContext = typeContext,
 						$temp$aType = t1;
-					context = $temp$context;
+					typeContext = $temp$typeContext;
 					aType = $temp$aType;
 					continue checkType;
 			}
@@ -7597,10 +7778,42 @@ var $elm$core$Result$mapError = F2(
 				f(e));
 		}
 	});
+var $author$project$TypeInference$checkSimpleContext = F4(
+	function (typeContext, context, simpleContext, multiplicity) {
+		if (!simpleContext.b) {
+			return $elm$core$Result$Ok(context);
+		} else {
+			var _v1 = simpleContext.a;
+			var id = _v1.a;
+			var aType = _v1.b;
+			var xs = simpleContext.b;
+			return A2(
+				$elm$core$Result$andThen,
+				function (_v2) {
+					return A4(
+						$author$project$TypeInference$checkSimpleContext,
+						typeContext,
+						A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(
+								id,
+								_Utils_Tuple2(aType, multiplicity)),
+							context),
+						xs,
+						multiplicity);
+				},
+				A2(
+					$elm$core$Result$mapError,
+					function (e) {
+						return 'In the declaration of ' + (id + (': ' + e));
+					},
+					A2($author$project$TypeInference$checkType, typeContext, aType)));
+		}
+	});
 var $author$project$TypeInference$checkTypeEnvironment = F2(
-	function (context, env) {
+	function (typeContext, env) {
 		if (!env.b) {
-			return $elm$core$Result$Ok(_Utils_Tuple0);
+			return $elm$core$Result$Ok(typeContext);
 		} else {
 			var _v1 = env.a;
 			var id = _v1.a;
@@ -7611,7 +7824,7 @@ var $author$project$TypeInference$checkTypeEnvironment = F2(
 				function (_v2) {
 					return A2(
 						$author$project$TypeInference$checkTypeEnvironment,
-						A2($elm$core$List$cons, id, context),
+						A2($elm$core$List$cons, id, typeContext),
 						xs);
 				},
 				A2(
@@ -7619,13 +7832,25 @@ var $author$project$TypeInference$checkTypeEnvironment = F2(
 					function (e) {
 						return 'In the type definition of ' + (id + (': ' + e));
 					},
-					A2($author$project$TypeInference$checkType, context, aType)));
+					A2($author$project$TypeInference$checkType, typeContext, aType)));
 		}
 	});
-var $author$project$TypeInference$Unrestricted = {$: 'Unrestricted'};
-var $author$project$TypeInference$Linear = function (a) {
-	return {$: 'Linear', a: a};
-};
+var $author$project$TypeInference$markAllAsUnavailable = $elm$core$List$map(
+	function (entry) {
+		if (entry.b.b.$ === 'Linear') {
+			var key = entry.a;
+			var _v1 = entry.b;
+			var aType = _v1.a;
+			return _Utils_Tuple2(
+				key,
+				_Utils_Tuple2(
+					aType,
+					$author$project$TypeInference$Linear(false)));
+		} else {
+			var x = entry;
+			return x;
+		}
+	});
 var $author$project$TypeInference$contextIntersection = F2(
 	function (context1, context2) {
 		var _v0 = _Utils_Tuple2(context1, context2);
@@ -7774,9 +7999,6 @@ var $elm$core$List$drop = F2(
 			}
 		}
 	});
-var $author$project$TypeInference$envToContext = function (typeEnv) {
-	return A2($elm$core$List$map, $elm$core$Tuple$first, typeEnv);
-};
 var $author$project$TypeInference$isAvailable = F2(
 	function (id, context) {
 		var _v0 = A2($author$project$Utils$lookup, id, context);
@@ -7786,22 +8008,6 @@ var $author$project$TypeInference$isAvailable = F2(
 			return available;
 		} else {
 			return false;
-		}
-	});
-var $author$project$TypeInference$markAllAsUnavailable = $elm$core$List$map(
-	function (entry) {
-		if (entry.b.b.$ === 'Linear') {
-			var key = entry.a;
-			var _v1 = entry.b;
-			var aType = _v1.a;
-			return _Utils_Tuple2(
-				key,
-				_Utils_Tuple2(
-					aType,
-					$author$project$TypeInference$Linear(false)));
-		} else {
-			var x = entry;
-			return x;
 		}
 	});
 var $author$project$Utils$lookupAndUpdate = F3(
@@ -7892,7 +8098,7 @@ var $author$project$AbstractSyntax$typeToString = function (aType) {
 			return '0';
 		default:
 			var type1 = aType.a;
-			return '!' + $author$project$AbstractSyntax$typeToString(type1);
+			return '@' + $author$project$AbstractSyntax$typeToString(type1);
 	}
 };
 var $author$project$TypeInference$typesAreEqual = F3(
@@ -7902,9 +8108,17 @@ var $author$project$TypeInference$typesAreEqual = F3(
 			var _v0 = _Utils_Tuple2(
 				A2($author$project$TypeInference$resolveTypeAlias, typeEnv, type1),
 				A2($author$project$TypeInference$resolveTypeAlias, typeEnv, type2));
-			_v0$9:
+			_v0$10:
 			while (true) {
 				switch (_v0.a.$) {
+					case 'Type_Constant':
+						if (_v0.b.$ === 'Type_Constant') {
+							var id1 = _v0.a.a;
+							var id2 = _v0.b.a;
+							return _Utils_eq(id1, id2);
+						} else {
+							break _v0$10;
+						}
 					case 'Type_LinearFn':
 						if (_v0.b.$ === 'Type_LinearFn') {
 							var _v1 = _v0.a;
@@ -7915,7 +8129,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var type2_2 = _v2.b;
 							return A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_1, type2_1) && A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_2, type2_2);
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_UnrestrictedFn':
 						if (_v0.b.$ === 'Type_UnrestrictedFn') {
@@ -7927,7 +8141,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var type2_2 = _v4.b;
 							return A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_1, type2_1) && A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_2, type2_2);
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_SimultaneousProduct':
 						if (_v0.b.$ === 'Type_SimultaneousProduct') {
@@ -7939,7 +8153,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var type2_2 = _v6.b;
 							return A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_1, type2_1) && A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_2, type2_2);
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_Unit':
 						if (_v0.b.$ === 'Type_Unit') {
@@ -7947,7 +8161,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var _v8 = _v0.b;
 							return true;
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_AlternativeProduct':
 						if (_v0.b.$ === 'Type_AlternativeProduct') {
@@ -7959,7 +8173,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var type2_2 = _v10.b;
 							return A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_1, type2_1) && A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_2, type2_2);
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_Top':
 						if (_v0.b.$ === 'Type_Top') {
@@ -7967,7 +8181,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var _v12 = _v0.b;
 							return true;
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_Sum':
 						if (_v0.b.$ === 'Type_Sum') {
@@ -7979,7 +8193,7 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var type2_2 = _v14.b;
 							return A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_1, type2_1) && A3($author$project$TypeInference$typesAreEqual, typeEnv, type1_2, type2_2);
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
 					case 'Type_Zero':
 						if (_v0.b.$ === 'Type_Zero') {
@@ -7987,9 +8201,9 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							var _v16 = _v0.b;
 							return true;
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
-					case 'Type_OfCourse':
+					default:
 						if (_v0.b.$ === 'Type_OfCourse') {
 							var type1_1 = _v0.a.a;
 							var type2_1 = _v0.b.a;
@@ -8001,17 +8215,15 @@ var $author$project$TypeInference$typesAreEqual = F3(
 							type2 = $temp$type2;
 							continue typesAreEqual;
 						} else {
-							break _v0$9;
+							break _v0$10;
 						}
-					default:
-						break _v0$9;
 				}
 			}
 			return false;
 		}
 	});
-var $author$project$TypeInference$typeInferTerm = F3(
-	function (typeEnv, context, term) {
+var $author$project$TypeInference$typeInferTerm = F4(
+	function (typeContext, typeEnv, context, term) {
 		switch (term.$) {
 			case 'Term_Var':
 				var id = term.a;
@@ -8059,8 +8271,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										A2($elm$core$List$drop, 1, outCtx),
 										slack)) : $elm$core$Result$Err('The linear variable ' + (id + ' is not used'));
 							},
-							A3(
+							A4(
 								$author$project$TypeInference$typeInferTerm,
+								typeContext,
 								typeEnv,
 								A2(
 									$elm$core$List$cons,
@@ -8072,10 +8285,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 									context),
 								body));
 					},
-					A2(
-						$author$project$TypeInference$checkType,
-						$author$project$TypeInference$envToContext(typeEnv),
-						varType));
+					A2($author$project$TypeInference$checkType, typeContext, varType));
 			case 'Term_UnrestrictedLambda':
 				var id = term.a;
 				var varType = term.b;
@@ -8095,8 +8305,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										A2($elm$core$List$drop, 1, outCtx),
 										slack));
 							},
-							A3(
+							A4(
 								$author$project$TypeInference$typeInferTerm,
+								typeContext,
 								typeEnv,
 								A2(
 									$elm$core$List$cons,
@@ -8106,10 +8317,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 									context),
 								body));
 					},
-					A2(
-						$author$project$TypeInference$checkType,
-						$author$project$TypeInference$envToContext(typeEnv),
-						varType));
+					A2($author$project$TypeInference$checkType, typeContext, varType));
 			case 'Term_Application':
 				var e1 = term.a;
 				var e2 = term.b;
@@ -8134,7 +8342,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 											_Utils_Tuple3(b, outCtx2, slack1 || slack2)) : $elm$core$Result$Err(
 											'An expression of type ' + ($author$project$AbstractSyntax$typeToString(a) + (' was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type2))));
 									},
-									A3($author$project$TypeInference$typeInferTerm, typeEnv, outCtx1, e2));
+									A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, outCtx1, e2));
 							case 'Type_UnrestrictedFn':
 								var a = _v11.a;
 								var b = _v11.b;
@@ -8146,8 +8354,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 											_Utils_Tuple3(b, outCtx1, slack1)) : $elm$core$Result$Err(
 											'An expression of type ' + ($author$project$AbstractSyntax$typeToString(a) + (' was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type2))));
 									},
-									A3(
+									A4(
 										$author$project$TypeInference$typeInferTerm,
+										typeContext,
 										typeEnv,
 										$author$project$TypeInference$markAllAsUnavailable(context),
 										e2));
@@ -8156,7 +8365,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 									'An expression of a function type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type1));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e1));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e1));
 			case 'Term_SimultaneousPair':
 				var e1 = term.a;
 				var e2 = term.b;
@@ -8178,9 +8387,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										outCtx2,
 										slack1 || slack2));
 							},
-							A3($author$project$TypeInference$typeInferTerm, typeEnv, outCtx1, e2));
+							A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, outCtx1, e2));
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e1));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e1));
 			case 'Term_SimultaneousLet':
 				var id1 = term.a;
 				var id2 = term.b;
@@ -8210,8 +8419,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 											A2($elm$core$List$drop, 2, outCtx2),
 											slack1 || slack2)) : (availableId2 ? $elm$core$Result$Err('The linear variable ' + (id2 + ' is not used')) : $elm$core$Result$Err('The linear variable ' + (id1 + ' is not used')));
 								},
-								A3(
+								A4(
 									$author$project$TypeInference$typeInferTerm,
+									typeContext,
 									typeEnv,
 									A2(
 										$elm$core$List$cons,
@@ -8234,7 +8444,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 								'An expression of simultaneous product type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type1));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e1));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e1));
 			case 'Term_Unit':
 				return $elm$core$Result$Ok(
 					_Utils_Tuple3($author$project$AbstractSyntax$Type_Unit, context, false));
@@ -8258,13 +8468,13 @@ var $author$project$TypeInference$typeInferTerm = F3(
 									return $elm$core$Result$Ok(
 										_Utils_Tuple3(type2, outCtx2, slack1 || slack2));
 								},
-								A3($author$project$TypeInference$typeInferTerm, typeEnv, outCtx1, e2));
+								A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, outCtx1, e2));
 						} else {
 							return $elm$core$Result$Err(
 								'An expression of unit type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type1));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e1));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e1));
 			case 'Term_AlternativePair':
 				var e1 = term.a;
 				var e2 = term.b;
@@ -8286,9 +8496,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										A2($author$project$TypeInference$contextIntersection, outCtx1, outCtx2),
 										slack1 && slack2)) : $elm$core$Result$Err('Some linear variable is used in one component of the alternative pair, but not in the other');
 							},
-							A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e2));
+							A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e2));
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e1));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e1));
 			case 'Term_Fst':
 				var e = term.a;
 				return A2(
@@ -8307,7 +8517,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 								'An expression of alternative product type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(aType));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
 			case 'Term_Snd':
 				var e = term.a;
 				return A2(
@@ -8326,7 +8536,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 								'An expression of alternative product type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(aType));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
 			case 'Term_Top':
 				return $elm$core$Result$Ok(
 					_Utils_Tuple3($author$project$AbstractSyntax$Type_Top, context, true));
@@ -8348,12 +8558,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										outCtx,
 										slack));
 							},
-							A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e));
+							A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
 					},
-					A2(
-						$author$project$TypeInference$checkType,
-						$author$project$TypeInference$envToContext(typeEnv),
-						type2));
+					A2($author$project$TypeInference$checkType, typeContext, type2));
 			case 'Term_Inr':
 				var type1 = term.a;
 				var e = term.b;
@@ -8372,12 +8579,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										outCtx,
 										slack));
 							},
-							A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e));
+							A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
 					},
-					A2(
-						$author$project$TypeInference$checkType,
-						$author$project$TypeInference$envToContext(typeEnv),
-						type1));
+					A2($author$project$TypeInference$checkType, typeContext, type1));
 			case 'Term_Case':
 				var e = term.a;
 				var id1 = term.b;
@@ -8423,8 +8627,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 												}
 											}
 										},
-										A3(
+										A4(
 											$author$project$TypeInference$typeInferTerm,
+											typeContext,
 											typeEnv,
 											A2(
 												$elm$core$List$cons,
@@ -8436,8 +8641,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 												outCtx1),
 											e2));
 								},
-								A3(
+								A4(
 									$author$project$TypeInference$typeInferTerm,
+									typeContext,
 									typeEnv,
 									A2(
 										$elm$core$List$cons,
@@ -8453,7 +8659,7 @@ var $author$project$TypeInference$typeInferTerm = F3(
 								'An expression of sum type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type1));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
 			case 'Term_Abort':
 				var aType = term.a;
 				var e = term.b;
@@ -8474,12 +8680,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 										'An expression of type 0 was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type1));
 								}
 							},
-							A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e));
+							A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
 					},
-					A2(
-						$author$project$TypeInference$checkType,
-						$author$project$TypeInference$envToContext(typeEnv),
-						aType));
+					A2($author$project$TypeInference$checkType, typeContext, aType));
 			case 'Term_Bang':
 				var e = term.a;
 				return A2(
@@ -8492,8 +8695,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 								context,
 								false));
 					},
-					A3(
+					A4(
 						$author$project$TypeInference$typeInferTerm,
+						typeContext,
 						typeEnv,
 						$author$project$TypeInference$markAllAsUnavailable(context),
 						e));
@@ -8522,8 +8726,9 @@ var $author$project$TypeInference$typeInferTerm = F3(
 											A2($elm$core$List$drop, 1, outCtx2),
 											slack1 || slack2));
 								},
-								A3(
+								A4(
 									$author$project$TypeInference$typeInferTerm,
+									typeContext,
 									typeEnv,
 									A2(
 										$elm$core$List$cons,
@@ -8537,11 +8742,11 @@ var $author$project$TypeInference$typeInferTerm = F3(
 								'An expression of \"of course\" type was expected, but it has type ' + $author$project$AbstractSyntax$typeToString(type1));
 						}
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, e1));
+					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e1));
 		}
 	});
-var $author$project$TypeInference$typeInferDefEnv = F3(
-	function (typeEnv, context, defEnv) {
+var $author$project$TypeInference$typeInferDefEnv = F4(
+	function (typeContext, typeEnv, context, defEnv) {
 		if (!defEnv.b) {
 			return $elm$core$Result$Ok(context);
 		} else {
@@ -8556,20 +8761,32 @@ var $author$project$TypeInference$typeInferDefEnv = F3(
 					var inferredType = _v2.a;
 					if (maybeType.$ === 'Just') {
 						var declaredType = maybeType.a;
-						return A3($author$project$TypeInference$typesAreEqual, typeEnv, inferredType, declaredType) ? A3(
-							$author$project$TypeInference$typeInferDefEnv,
-							typeEnv,
+						return A2(
+							$elm$core$Result$andThen,
+							function (_v4) {
+								return A3($author$project$TypeInference$typesAreEqual, typeEnv, inferredType, declaredType) ? A4(
+									$author$project$TypeInference$typeInferDefEnv,
+									typeContext,
+									typeEnv,
+									A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(
+											id,
+											_Utils_Tuple2(declaredType, $author$project$TypeInference$Unrestricted)),
+										context),
+									xs) : $elm$core$Result$Err(
+									'Declared type of ' + (id + (' is ' + ($author$project$AbstractSyntax$typeToString(declaredType) + (', but the inferred type is ' + $author$project$AbstractSyntax$typeToString(inferredType))))));
+							},
 							A2(
-								$elm$core$List$cons,
-								_Utils_Tuple2(
-									id,
-									_Utils_Tuple2(declaredType, $author$project$TypeInference$Unrestricted)),
-								context),
-							xs) : $elm$core$Result$Err(
-							'Declared type of ' + (id + (' is ' + ($author$project$AbstractSyntax$typeToString(declaredType) + (', but the inferred type is ' + $author$project$AbstractSyntax$typeToString(inferredType))))));
+								$elm$core$Result$mapError,
+								function (e) {
+									return 'In the type annotation of ' + (id + (': ' + e));
+								},
+								A2($author$project$TypeInference$checkType, typeContext, declaredType)));
 					} else {
-						return A3(
+						return A4(
 							$author$project$TypeInference$typeInferDefEnv,
+							typeContext,
 							typeEnv,
 							A2(
 								$elm$core$List$cons,
@@ -8585,30 +8802,60 @@ var $author$project$TypeInference$typeInferDefEnv = F3(
 					function (e) {
 						return 'In the definition of ' + (id + (': ' + e));
 					},
-					A3($author$project$TypeInference$typeInferTerm, typeEnv, context, term)));
+					A4(
+						$author$project$TypeInference$typeInferTerm,
+						typeContext,
+						typeEnv,
+						$author$project$TypeInference$markAllAsUnavailable(context),
+						term)));
 		}
 	});
 var $author$project$TypeInference$typeInferProgram = function (_v0) {
-	var typeEnv = _v0.a;
-	var defEnv = _v0.b;
-	var mainTerm = _v0.c;
+	var atomicTypes = _v0.atomicTypes;
+	var typedefs = _v0.typedefs;
+	var unrestrictedContext = _v0.unrestrictedContext;
+	var linearContext = _v0.linearContext;
+	var defs = _v0.defs;
+	var mainTerm = _v0.mainTerm;
 	return A2(
 		$elm$core$Result$andThen,
-		function (_v1) {
+		function (typeContext) {
 			return A2(
 				$elm$core$Result$andThen,
-				function (context) {
+				function (context1) {
 					return A2(
 						$elm$core$Result$andThen,
-						function (_v2) {
-							var aType = _v2.a;
-							return $elm$core$Result$Ok(aType);
+						function (context2) {
+							return A2(
+								$elm$core$Result$andThen,
+								function (context) {
+									return A2(
+										$elm$core$Result$andThen,
+										function (_v1) {
+											var aType = _v1.a;
+											var outCtx = _v1.b;
+											var slack = _v1.c;
+											return slack ? $elm$core$Result$Ok(aType) : A2(
+												$elm$core$Result$andThen,
+												function (_v2) {
+													return $elm$core$Result$Ok(aType);
+												},
+												$author$project$TypeInference$checkOutContext(outCtx));
+										},
+										A4($author$project$TypeInference$typeInferTerm, typeContext, typedefs, context, mainTerm));
+								},
+								A4($author$project$TypeInference$typeInferDefEnv, typeContext, typedefs, context2, defs));
 						},
-						A3($author$project$TypeInference$typeInferTerm, typeEnv, context, mainTerm));
+						A4(
+							$author$project$TypeInference$checkSimpleContext,
+							typeContext,
+							context1,
+							linearContext,
+							$author$project$TypeInference$Linear(true)));
 				},
-				A3($author$project$TypeInference$typeInferDefEnv, typeEnv, _List_Nil, defEnv));
+				A4($author$project$TypeInference$checkSimpleContext, typeContext, _List_Nil, unrestrictedContext, $author$project$TypeInference$Unrestricted));
 		},
-		A2($author$project$TypeInference$checkTypeEnvironment, _List_Nil, typeEnv));
+		A2($author$project$TypeInference$checkTypeEnvironment, atomicTypes, typedefs));
 };
 var $author$project$Main$parseInferEval = function (code) {
 	var _v0 = $author$project$Parsing$parseProgram(code);
@@ -8617,11 +8864,13 @@ var $author$project$Main$parseInferEval = function (code) {
 		var _v1 = $author$project$TypeInference$typeInferProgram(program);
 		if (_v1.$ === 'Ok') {
 			var aType = _v1.a;
-			var value = A2(
-				$elm$core$Maybe$withDefault,
-				$author$project$Evaluation$Value_Unit,
-				$author$project$Evaluation$evalProgram(program));
-			return A3($author$project$Main$WellTyped, program, aType, value);
+			var _v2 = $author$project$Evaluation$evalProgram(program);
+			if (_v2.$ === 'Just') {
+				var value = _v2.a;
+				return A3($author$project$Main$Success, program, aType, value);
+			} else {
+				return A2($author$project$Main$EvaluationError, program, aType);
+			}
 		} else {
 			var error = _v1.a;
 			return A2($author$project$Main$TypeError, program, error);
@@ -8644,7 +8893,7 @@ var $author$project$Evaluation$valueToString = function (value) {
 			var v2 = value.b;
 			return '{' + ($author$project$Evaluation$valueToString(v1) + (', ' + ($author$project$Evaluation$valueToString(v2) + '}')));
 		case 'Value_Unit':
-			return '*';
+			return '{}';
 		case 'Value_AlternativePair':
 			return '<<code>, <code>>';
 		case 'Value_Top':
@@ -8656,7 +8905,7 @@ var $author$project$Evaluation$valueToString = function (value) {
 			var v = value.a;
 			return 'inr ' + $author$project$Evaluation$valueToString(v);
 		default:
-			return '!<code>';
+			return '@<code>';
 	}
 };
 var $author$project$Main$viewParsed = function (code) {
@@ -8678,6 +8927,17 @@ var $author$project$Main$viewParsed = function (code) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text('Error: ' + error)
+					]));
+		case 'EvaluationError':
+			var aType = _v0.b;
+			return A2(
+				$elm$html$Html$pre,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Value: \n<stuck>\n\n'),
+						$elm$html$Html$text(
+						'Type: \n' + $author$project$AbstractSyntax$typeToString(aType))
 					]));
 		default:
 			var aType = _v0.b;

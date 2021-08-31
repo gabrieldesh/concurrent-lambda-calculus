@@ -188,25 +188,29 @@ var = Combine.map Term_Var identifier
 
 linearLambda : Parser s Term
 linearLambda = 
-  token (string "\\^") |> andThen (\_ ->
+  token (string "\\") |> andThen (\_ ->
+  token (string "<") |> andThen (\_ ->
   identifier |> andThen (\id ->
   token (string ":") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
+  token (string ">") |> andThen (\_ ->
   token (string ".") |> andThen (\_ ->
   expression |> andThen (\exp ->
   succeed (Term_LinearLambda id aType exp)
-  ))))))
+  ))))))))
 
 unrestrictedLambda : Parser s Term
 unrestrictedLambda = 
   token (string "\\") |> andThen (\_ ->
+  token (string "[") |> andThen (\_ ->
   identifier |> andThen (\id ->
   token (string ":") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
+  token (string "]") |> andThen (\_ ->
   token (string ".") |> andThen (\_ ->
   expression |> andThen (\exp ->
   succeed (Term_UnrestrictedLambda id aType exp)
-  ))))))
+  ))))))))
 
 simultaneousPair : Parser s Term
 simultaneousPair =
@@ -232,17 +236,21 @@ simultaneousLet =
   succeed (Term_SimultaneousLet id1 id2 e1 e2)))))))))))
 
 unit : Parser s Term
-unit = token (string "*") |> onsuccess Term_Unit
+unit = 
+  token (string "{") |> andThen (\_ ->
+  token (string "}") |> andThen (\_ ->
+  succeed Term_Unit))
 
 unitLet : Parser s Term
 unitLet =
   token (string "let") |> andThen (\_ ->
-  token (string "*") |> andThen (\_ ->
+  token (string "{") |> andThen (\_ ->
+  token (string "}") |> andThen (\_ ->
   token (string "=") |> andThen (\_ ->
   expression |> andThen (\e1 ->
   token (string "in") |> andThen (\_ ->
   expression |> andThen (\e2 ->
-  succeed (Term_UnitLet e1 e2)))))))
+  succeed (Term_UnitLet e1 e2))))))))
 
 alternativePair : Parser s Term
 alternativePair =
@@ -293,12 +301,12 @@ caseExpr =
   token (string "of") |> andThen (\_ ->
   token (string "inl") |> andThen (\_ ->
   identifier |> andThen (\id1 ->
-  token (string "=>") |> andThen (\_ ->
+  token (string "->") |> andThen (\_ ->
   expression |> andThen (\e1 ->
-  token (string "|") |> andThen (\_ ->
+  token (string ";") |> andThen (\_ ->
   token (string "inr") |> andThen (\_ ->
   identifier |> andThen (\id2 ->
-  token (string "=>") |> andThen (\_ ->
+  token (string "->") |> andThen (\_ ->
   expression |> andThen (\e2 ->
   succeed (Term_Case e id1 e1 id2 e2)))))))))))))
 
@@ -313,14 +321,14 @@ abort =
 
 bang : Parser s Term
 bang =
-  token (string "!") |> andThen (\_ ->
+  token (string "@") |> andThen (\_ ->
   atom |> andThen (\e ->
   succeed (Term_Bang e)))
 
 bangLet : Parser s Term
 bangLet =
   token (string "let") |> andThen (\_ ->
-  token (string "!") |> andThen (\_ ->
+  token (string "@") |> andThen (\_ ->
   identifier |> andThen (\id ->
   token (string "=") |> andThen (\_ ->
   expression |> andThen (\e1 ->
@@ -380,7 +388,7 @@ typeConstant = Combine.map Type_Constant identifier
 
 typeOfCourse : Parser s Type
 typeOfCourse =
-  token (string "!") |> andThen (\_ ->
+  token (string "@") |> andThen (\_ ->
   typeAtom |> andThen (\aType ->
   succeed (Type_OfCourse aType)))
 

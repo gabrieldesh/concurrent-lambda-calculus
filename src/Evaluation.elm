@@ -33,7 +33,7 @@ valueToString value =
       "{" ++ valueToString v1 ++ ", " ++ valueToString v2 ++ "}"
     
     Value_Unit ->
-      "*"
+      "{}"
 
     Value_AlternativePair _ _ _ ->
       "<<code>, <code>>"
@@ -48,7 +48,7 @@ valueToString value =
       "inr " ++ valueToString v
     
     Value_Bang _ _ ->
-      "!<code>"
+      "@<code>"
 
 
 
