@@ -5869,7 +5869,7 @@ var $author$project$Evaluation$evalTerm = F2(
 						}
 					},
 					A2($author$project$Evaluation$evalTerm, env, e));
-			case 'Term_Abort':
+			case 'Term_Absurd':
 				return $elm$core$Maybe$Nothing;
 			case 'Term_Bang':
 				var e = term.a;
@@ -6112,7 +6112,7 @@ var $andre_dietrich$parser_combinators$Combine$regex = A2(
 		}),
 	$andre_dietrich$parser_combinators$Combine$Parser);
 var $author$project$Parsing$reservedWords = _List_fromArray(
-	['let', 'in', 'fst', 'snd', 'inl', 'inr', 'case', 'of', 'abort', 'atomic', 'types', 'unrestricted', 'linear', 'context', 'typedef', 'def', 'end', 'T']);
+	['let', 'in', 'fst', 'snd', 'inl', 'inr', 'case', 'of', 'absurd', 'atomic', 'types', 'unrestricted', 'linear', 'context', 'typedef', 'def', 'end', 'T']);
 var $andre_dietrich$parser_combinators$Combine$succeed = function (res) {
 	return $andre_dietrich$parser_combinators$Combine$Parser(
 		F2(
@@ -6485,9 +6485,9 @@ var $author$project$Parsing$atomicTypesClause = A2(
 	},
 	$author$project$Parsing$token(
 		$andre_dietrich$parser_combinators$Combine$string('atomic')));
-var $author$project$AbstractSyntax$Term_Abort = F2(
+var $author$project$AbstractSyntax$Term_Absurd = F2(
 	function (a, b) {
-		return {$: 'Term_Abort', a: a, b: b};
+		return {$: 'Term_Absurd', a: a, b: b};
 	});
 var $author$project$AbstractSyntax$Term_AlternativePair = F2(
 	function (a, b) {
@@ -6815,13 +6815,13 @@ function $author$project$Parsing$cyclic$atom() {
 				$author$project$Parsing$cyclic$inl(),
 				$author$project$Parsing$cyclic$inr(),
 				$author$project$Parsing$cyclic$caseExpr(),
-				$author$project$Parsing$cyclic$abort(),
+				$author$project$Parsing$cyclic$absurd(),
 				$author$project$Parsing$cyclic$bang(),
 				$author$project$Parsing$cyclic$bangLet(),
 				$author$project$Parsing$cyclic$exprBetweenParens()
 			]));
 }
-function $author$project$Parsing$cyclic$abort() {
+function $author$project$Parsing$cyclic$absurd() {
 	return A2(
 		$andre_dietrich$parser_combinators$Combine$andThen,
 		function (_v48) {
@@ -6838,7 +6838,7 @@ function $author$project$Parsing$cyclic$abort() {
 										$andre_dietrich$parser_combinators$Combine$andThen,
 										function (e) {
 											return $andre_dietrich$parser_combinators$Combine$succeed(
-												A2($author$project$AbstractSyntax$Term_Abort, aType, e));
+												A2($author$project$AbstractSyntax$Term_Absurd, aType, e));
 										},
 										$author$project$Parsing$cyclic$atom());
 								},
@@ -6851,7 +6851,7 @@ function $author$project$Parsing$cyclic$abort() {
 					$andre_dietrich$parser_combinators$Combine$string('[')));
 		},
 		$author$project$Parsing$token(
-			$andre_dietrich$parser_combinators$Combine$string('abort')));
+			$andre_dietrich$parser_combinators$Combine$string('absurd')));
 }
 function $author$project$Parsing$cyclic$alternativePair() {
 	return A2(
@@ -7363,9 +7363,9 @@ try {
 	$author$project$Parsing$cyclic$atom = function () {
 		return $author$project$Parsing$atom;
 	};
-	var $author$project$Parsing$abort = $author$project$Parsing$cyclic$abort();
-	$author$project$Parsing$cyclic$abort = function () {
-		return $author$project$Parsing$abort;
+	var $author$project$Parsing$absurd = $author$project$Parsing$cyclic$absurd();
+	$author$project$Parsing$cyclic$absurd = function () {
+		return $author$project$Parsing$absurd;
 	};
 	var $author$project$Parsing$alternativePair = $author$project$Parsing$cyclic$alternativePair();
 	$author$project$Parsing$cyclic$alternativePair = function () {
@@ -7424,7 +7424,7 @@ try {
 		return $author$project$Parsing$unrestrictedLambda;
 	};
 } catch ($) {
-	throw 'Some top-level definitions from `Parsing` are causing infinite recursion:\n\n  ┌─────┐\n  │    expression\n  │     ↓\n  │    atom\n  │     ↓\n  │    abort\n  │     ↓\n  │    alternativePair\n  │     ↓\n  │    bang\n  │     ↓\n  │    bangLet\n  │     ↓\n  │    caseExpr\n  │     ↓\n  │    exprBetweenParens\n  │     ↓\n  │    fst\n  │     ↓\n  │    inl\n  │     ↓\n  │    inr\n  │     ↓\n  │    linearLambda\n  │     ↓\n  │    simultaneousLet\n  │     ↓\n  │    simultaneousPair\n  │     ↓\n  │    snd\n  │     ↓\n  │    unitLet\n  │     ↓\n  │    unrestrictedLambda\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
+	throw 'Some top-level definitions from `Parsing` are causing infinite recursion:\n\n  ┌─────┐\n  │    expression\n  │     ↓\n  │    atom\n  │     ↓\n  │    absurd\n  │     ↓\n  │    alternativePair\n  │     ↓\n  │    bang\n  │     ↓\n  │    bangLet\n  │     ↓\n  │    caseExpr\n  │     ↓\n  │    exprBetweenParens\n  │     ↓\n  │    fst\n  │     ↓\n  │    inl\n  │     ↓\n  │    inr\n  │     ↓\n  │    linearLambda\n  │     ↓\n  │    simultaneousLet\n  │     ↓\n  │    simultaneousPair\n  │     ↓\n  │    snd\n  │     ↓\n  │    unitLet\n  │     ↓\n  │    unrestrictedLambda\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $author$project$Parsing$typeAnnotation = A2(
 	$andre_dietrich$parser_combinators$Combine$andThen,
 	function (_v0) {
@@ -8660,7 +8660,7 @@ var $author$project$TypeInference$typeInferTerm = F4(
 						}
 					},
 					A4($author$project$TypeInference$typeInferTerm, typeContext, typeEnv, context, e));
-			case 'Term_Abort':
+			case 'Term_Absurd':
 				var aType = term.a;
 				var e = term.b;
 				return A2(

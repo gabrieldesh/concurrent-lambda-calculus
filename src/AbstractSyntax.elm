@@ -83,7 +83,7 @@ type Term
   | Term_Inl Type Term
   | Term_Inr Type Term
   | Term_Case Term Id Term Id Term
-  | Term_Abort Type Term
+  | Term_Absurd Type Term
   | Term_Bang Term
   | Term_BangLet Id Term Term
     
@@ -185,9 +185,9 @@ termToIndentedString indentLevel term =
           , termToIndentedString (indentLevel + 1) e2
           ]
       
-      Term_Abort type1 e ->
+      Term_Absurd type1 e ->
         String.concat
-          [ indentation ++ "Abort [ " ++ typeToString type1 ++ " ]\n"
+          [ indentation ++ "Absurd [ " ++ typeToString type1 ++ " ]\n"
           , termToIndentedString (indentLevel + 1) e
           ]
       

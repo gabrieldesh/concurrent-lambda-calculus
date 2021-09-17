@@ -62,7 +62,7 @@ def
 
   -- Impossibility
   {- No introduction for 0 -}
-  h : 0 -o A = \<x : 0>. abort [A] x;
+  h : 0 -o A = \<x : 0>. absurd [A] x;
 
   -- Bang
   u : @A = @e1;

@@ -425,7 +425,7 @@ typeInferTerm typeContext typeEnv context term =
         _ ->
           Err ("An expression of sum type was expected, but it has type " ++ typeToString type1))
     
-    Term_Abort aType e ->
+    Term_Absurd aType e ->
       checkType typeContext aType |> andThen (\_ ->
       typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx, _) ->
       case resolveTypeAlias typeEnv type1 of

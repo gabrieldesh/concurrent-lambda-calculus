@@ -38,7 +38,7 @@ multilineComment =
 
 reservedWords : List String
 reservedWords =
-  ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "abort", "atomic", "types", "unrestricted",
+  ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "absurd", "atomic", "types", "unrestricted",
    "linear", "context", "typedef", "def", "end", "T"]
 
 identifier : Parser s String
@@ -177,7 +177,7 @@ atom =
     , inl
     , inr
     , caseExpr
-    , abort
+    , absurd
     , bang
     , bangLet
     , exprBetweenParens
@@ -310,14 +310,14 @@ caseExpr =
   expression |> andThen (\e2 ->
   succeed (Term_Case e id1 e1 id2 e2)))))))))))))
 
-abort : Parser s Term
-abort =
-  token (string "abort") |> andThen (\_ ->
+absurd : Parser s Term
+absurd =
+  token (string "absurd") |> andThen (\_ ->
   token (string "[") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
   token (string "]") |> andThen (\_ ->
   atom |> andThen (\e ->
-  succeed (Term_Abort aType e))))))
+  succeed (Term_Absurd aType e))))))
 
 bang : Parser s Term
 bang =

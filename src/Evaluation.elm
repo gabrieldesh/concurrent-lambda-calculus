@@ -169,7 +169,7 @@ evalTerm env term =
         _ ->
           Nothing)
     
-    Term_Abort _ _ ->
+    Term_Absurd _ _ ->
       Nothing
     
     Term_Bang e ->
