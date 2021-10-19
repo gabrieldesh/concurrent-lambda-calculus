@@ -3,38 +3,75 @@ module AbstractSyntax exposing
   , Type(..)
   , typeToString
   , Term(..)
-  , termToString
-  , TypeContext
-  , TypeEnvironment
-  , DefinitionEnvironment
-  , SimpleContext
-  , LambdaProgram
+  , Kind(..)
+  , Multiplicity(..)
+  , TypeVarContext
+  , TypeDefs
+  , TermVarContext
+  , STLProgram
   )
 
 
 type alias Id = String
 
+type Kind = Kind_SessionType | Kind_NonSessionType
+
+type Multiplicity = Lin | Un
 
 -- TYPES
 
 type Type
-  = Type_Constant Id
+  = Type_Var Id
+  | Type_VarDual Id
+  | Type_Rec Id Kind Type
+  | Type_Send Type Type
+  | Type_Receive Type Type
+  | Type_Select Type Type
+  | Type_Branch Type Type
+  | Type_End
   | Type_LinearFn Type Type
   | Type_UnrestrictedFn Type Type
   | Type_SimultaneousProduct Type Type
   | Type_Unit
-  | Type_AlternativeProduct Type Type
-  | Type_Top
   | Type_Sum Type Type
-  | Type_Zero
   | Type_OfCourse Type
+  | Type_Accept Type
+  | Type_Request Type
+  | Type_Dual Type
 
+
+kindToString : Kind -> String
+kindToString kind =
+  case kind of
+    Kind_SessionType -> "*s"
+    Kind_NonSessionType -> "*ns"
 
 typeToString : Type -> String
 typeToString aType =
   case aType of
-    Type_Constant id ->
+    Type_Var id ->
       id
+    
+    Type_VarDual id ->
+      "dual(" ++ id ++ ")"
+    
+    Type_Rec id kind type1 ->
+      "rec " ++ id ++ " : " ++ kindToString kind ++ " . " ++ typeToString type1
+    
+    Type_Send type1 type2 ->
+      "!" ++ typeToString type1 ++ "." ++ typeToString type2
+    
+    Type_Receive type1 type2 ->
+      "?" ++ typeToString type1 ++ "." ++ typeToString type2
+    
+    Type_Select type1 type2 ->
+      "+{ " ++ typeToString type1 ++ ", " ++ typeToString type2 ++ " }"
+    
+    Type_Branch type1 type2 ->
+      "&{ " ++ typeToString type1 ++ ", " ++ typeToString type2 ++ " }"
+
+    Type_End ->
+      "End"
     
     Type_LinearFn type1 type2 ->
       "(" ++ typeToString type1 ++ ") -o (" ++ typeToString type2 ++ ")"
@@ -48,20 +85,20 @@ typeToString aType =
     Type_Unit ->
       "1"
     
-    Type_AlternativeProduct type1 type2 ->
-      "(" ++ typeToString type1 ++ ") & (" ++ typeToString type2 ++ ")"
-    
-    Type_Top ->
-      "T"
-    
     Type_Sum type1 type2 ->
       "(" ++ typeToString type1 ++ ") + (" ++ typeToString type2 ++ ")"
     
-    Type_Zero ->
-      "0"
-    
     Type_OfCourse type1 ->
-      "@" ++ typeToString type1
+      "@(" ++ typeToString type1 ++ ")"
+    
+    Type_Accept type1 ->
+      "Accept (" ++ typeToString type1 ++ ")"
+    
+    Type_Request type1 ->
+      "Request (" ++ typeToString type1 ++ ")"
+    
+    Type_Dual type1 ->
+      "dual(" ++ typeToString type1 ++ ")"
 
 
 
@@ -72,155 +109,46 @@ type Term
   | Term_LinearLambda Id Type Term
   | Term_UnrestrictedLambda Id Type Term
   | Term_Application Term Term
-  | Term_SimultaneousPair Term Term
-  | Term_SimultaneousLet Id Id Term Term
+  | Term_Pair Term Term
+  | Term_LetPair Id Id Term Term
   | Term_Unit
-  | Term_UnitLet Term Term
-  | Term_AlternativePair Term Term
-  | Term_Fst Term
-  | Term_Snd Term
-  | Term_Top
+  | Term_LetUnit Term Term
   | Term_Inl Type Term
   | Term_Inr Type Term
   | Term_Case Term Id Term Id Term
-  | Term_Absurd Type Term
-  | Term_Bang Term
-  | Term_BangLet Id Term Term
-    
-
-termToString : Term -> String
-termToString term = termToIndentedString 0 term
-
-termToIndentedString : Int -> Term -> String
-termToIndentedString indentLevel term = 
-  let
-    indentation = String.repeat indentLevel "  "
-  in
-    case term of
-      Term_Var id ->
-        indentation ++ "Var " ++ id
-      
-      Term_LinearLambda id type1 e ->
-        String.concat
-          [ indentation ++ "LinearLambda " ++ id ++ " : " ++ typeToString type1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_UnrestrictedLambda id type1 e ->
-        String.concat
-          [ indentation ++ "UnrestrictedLambda " ++ id ++ " : " ++ typeToString type1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_Application e1 e2 ->
-        String.concat
-          [ indentation ++ "App\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
-      
-      Term_SimultaneousPair e1 e2 ->
-        String.concat
-          [ indentation ++ "SimultaneousPair\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
-      
-      Term_SimultaneousLet id1 id2 e1 e2 ->
-        String.concat
-          [ indentation ++ "SimultaneousLet " ++ id1 ++ " " ++ id2 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
-      
-      Term_Unit ->
-        indentation ++ "Unit"
-      
-      Term_UnitLet e1 e2 ->
-        String.concat
-          [ indentation ++ "UnitLet\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
-
-      Term_AlternativePair e1 e2 ->
-        String.concat
-          [ indentation ++ "AlternativePair\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
-      
-      Term_Fst e ->
-        String.concat
-          [ indentation ++ "Fst\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_Snd e ->
-        String.concat
-          [ indentation ++ "Snd\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_Top ->
-        indentation ++ "Top"
-      
-      Term_Inl type1 e ->
-        String.concat
-          [ indentation ++ "Inl [ " ++ typeToString type1 ++ " ]\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_Inr type1 e ->
-        String.concat
-          [ indentation ++ "Inr [ " ++ typeToString type1 ++ " ]\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_Case e id1 e1 id2 e2 ->
-        String.concat
-          [ indentation ++ "case " ++ id1 ++ " " ++ id2 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e ++ "\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
-      
-      Term_Absurd type1 e ->
-        String.concat
-          [ indentation ++ "Absurd [ " ++ typeToString type1 ++ " ]\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_Bang e ->
-        String.concat
-          [ indentation ++ "Bang\n"
-          , termToIndentedString (indentLevel + 1) e
-          ]
-      
-      Term_BangLet id e1 e2 ->
-        String.concat
-          [ indentation ++ "BangLet " ++ id ++ "\n"
-          , termToIndentedString (indentLevel + 1) e1 ++ "\n"
-          , termToIndentedString (indentLevel + 1) e2
-          ]
+  | Term_OfCourse Term
+  | Term_LetOfCourse Id Term Term
+  | Term_Send Term Term
+  | Term_Receive Term
+  | Term_SelectLeft Term
+  | Term_SelectRight Term
+  | Term_Branch Term Id Term Id Term
+  | Term_Close Term
+  | Term_NewAccess Type Id Id Term
+  | Term_Accept Term
+  | Term_Request Term
+  | Term_NewSession Type
+  | Term_Fork Term
+  | Term_Spawn Term
+  | Term_Fold Type Term
+  | Term_Unfold Term
+  | Term_LetLin Id (Maybe Type) Term Term
+  | Term_LetUn Id (Maybe Type) Term Term
+  | Term_LetRec Id Type Term Term
 
 
 
 -- PROGRAM
 
-type alias TypeContext = List Id
+type alias TypeVarContext = List (Id, Kind)
 
-type alias TypeEnvironment = List (Id, Type)
+type alias TypeDefs = List (Id, Type)
 
-type alias SimpleContext = List (Id, Type)
+type alias TermVarContext = List (Id, (Multiplicity, Type))
 
-type alias DefinitionEnvironment = List (Id, Maybe Type, Term)
-
-type alias LambdaProgram =
-  { atomicTypes : TypeContext
-  , typedefs : TypeEnvironment
-  , unrestrictedContext : SimpleContext
-  , linearContext : SimpleContext
-  , defs : DefinitionEnvironment
+type alias STLProgram =
+  { typevars : TypeVarContext
+  , typedefs : TypeDefs
+  , vars : TermVarContext
   , mainTerm : Term
   }

@@ -5,7 +5,7 @@ import Combine exposing (..)
 import Combine.Char exposing (anyChar)
 
 
-parseProgram : String -> Result (List String) LambdaProgram
+parseProgram : String -> Result (List String) STLProgram
 parseProgram input =
   case parse programParser input of
     Ok (_, _, program) ->
@@ -38,60 +38,82 @@ multilineComment =
 
 reservedWords : List String
 reservedWords =
-  ["let", "in", "fst", "snd", "inl", "inr", "case", "of", "absurd", "atomic", "types", "unrestricted",
-   "linear", "context", "typedef", "def", "end", "T"]
+  ["rec", "End", "Accept", "Request", "lin", "un", "let", "in", "inl", "inr", "case", "of", "send", "receive", 
+   "select", "left", "right", "branch", "close", "new", "access", "accept", "request", "session", "fork", "spawn",
+   "fold", "unfold", "typevars", "typedefs", "vars", "end", "dual"]
 
 identifier : Parser s String
 identifier = 
-  token (regex "[A-Za-z_][0-9A-Za-z_-]*") |> andThen (\id ->
+  token (regex "[A-Za-z_]['0-9A-Za-z_-]*") |> andThen (\id ->
   if List.member id reservedWords
   then fail (id ++ " is a reserved word")
   else succeed id)
 
+typeAnnotation : Parser s Type
+typeAnnotation =
+  token (string ":") |> andThen (\_ ->
+  typeExpr)
+
+
+kindExpr : Parser s Kind
+kindExpr =
+  choice
+    [ token (string "*s") |> onsuccess Kind_SessionType
+    , token (string "*ns") |> onsuccess Kind_NonSessionType
+    ]
+
+multiplicityTag : Parser s Multiplicity
+multiplicityTag =
+  choice
+    [ token (string "lin") |> onsuccess Lin
+    , token (string "un") |> onsuccess Un
+    ]
 
 
 -- PROGRAM
 
-programParser : Parser s LambdaProgram
-programParser =
-  optional [] atomicTypesClause |> andThen (\atomicTypes ->
-  optional [] typedefClause |> andThen (\typedefs ->
-  optional [] unrestrictedContextClause |> andThen (\unrestrictedContext ->
-  optional [] linearContextClause |> andThen (\linearContext ->
-  optional [] defClause |> andThen (\defs ->
+programParser : Parser s STLProgram
+programParser = 
+  optional [] typevarsClause |> andThen (\typevars ->
+  optional [] typedefsClause |> andThen (\typedefs ->
+  optional [] varsClause |> andThen (\vars ->
   expression |> andThen (\mainTerm ->
   whitespaceOrComments |> andThen (\_ ->
   end |> andThen (\_ ->
   succeed
-    { atomicTypes = atomicTypes
+    { typevars = typevars
     , typedefs = typedefs
-    , unrestrictedContext = unrestrictedContext
-    , linearContext = linearContext
-    , defs = defs
+    , vars = vars
     , mainTerm = mainTerm
-    }))))))))
+    }))))))
 
-atomicTypesClause : Parser s TypeContext
-atomicTypesClause =
-  token (string "atomic") |> andThen (\_ ->
-  token (string "types") |> andThen (\_ ->
-  atomicTypesList |> andThen (\atomicTypes ->
+typevarsClause : Parser s TypeVarContext
+typevarsClause =
+  token (string "typevars") |> andThen (\_ ->
+  typevarsList |> andThen (\typevars ->
   token (string "end") |> andThen (\_ ->
-  succeed atomicTypes))))
+  succeed typevars)))
 
-atomicTypesList : Parser s TypeContext
-atomicTypesList =
-  sepEndBy (token (string ";")) identifier
+typevarsList : Parser s TypeVarContext
+typevarsList =
+  sepEndBy (token (string ";")) typevarDeclaration
 
-typedefClause : Parser s TypeEnvironment
-typedefClause =
-  token (string "typedef") |> andThen (\_ ->
-  typedefList |> andThen (\typeEnv ->
+typevarDeclaration : Parser s (Id, Kind)
+typevarDeclaration =
+  identifier |> andThen (\id ->
+  token (string ":") |> andThen (\_ ->
+  kindExpr |> andThen (\kind ->
+  succeed (id, kind))))
+
+typedefsClause : Parser s TypeDefs
+typedefsClause =
+  token (string "typedefs") |> andThen (\_ ->
+  typedefsList |> andThen (\typedefs ->
   token (string "end") |> andThen (\_ ->
-  succeed typeEnv)))
+  succeed typedefs)))
 
-typedefList : Parser s TypeEnvironment
-typedefList =
+typedefsList : Parser s TypeDefs
+typedefsList =
   sepEndBy (token (string ";")) typeDefinition
 
 typeDefinition : Parser s (Id, Type)
@@ -101,56 +123,24 @@ typeDefinition =
   typeExpr |> andThen (\aType ->
   succeed (id, aType))))
 
-unrestrictedContextClause : Parser s SimpleContext
-unrestrictedContextClause =
-  token (string "unrestricted") |> andThen (\_ ->
-  token (string "context") |> andThen (\_ ->
-  contextList |> andThen (\context ->
+varsClause : Parser s TermVarContext
+varsClause =
+  token (string "vars") |> andThen (\_ ->
+  varsList |> andThen (\context ->
   token (string "end") |> andThen (\_ ->
-  succeed context))))
+  succeed context)))
 
-linearContextClause : Parser s SimpleContext
-linearContextClause =
-  token (string "linear") |> andThen (\_ ->
-  token (string "context") |> andThen (\_ ->
-  contextList |> andThen (\context ->
-  token (string "end") |> andThen (\_ ->
-  succeed context))))
+varsList : Parser s TermVarContext
+varsList =
+  sepEndBy (token (string ";")) varDeclaration
 
-contextList : Parser s SimpleContext
-contextList =
-  sepEndBy (token (string ";")) contextDeclaration
-
-contextDeclaration : Parser s (Id, Type)
-contextDeclaration =
+varDeclaration : Parser s (Id, (Multiplicity, Type))
+varDeclaration =
+  multiplicityTag |> andThen (\mult ->
   identifier |> andThen (\id ->
   token (string ":") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
-  succeed (id, aType))))
-
-defClause : Parser s DefinitionEnvironment
-defClause =
-  token (string "def") |> andThen (\_ ->
-  defList |> andThen (\defEnv ->
-  token (string "end") |> andThen (\_ ->
-  succeed defEnv)))
-
-defList : Parser s DefinitionEnvironment
-defList =
-  sepEndBy (token (string ";")) definition
-
-definition : Parser s (Id, Maybe Type, Term)
-definition =
-  identifier |> andThen (\id ->
-  maybe typeAnnotation |> andThen (\maybeType ->
-  token (string "=") |> andThen (\_ ->
-  expression |> andThen (\term ->
-  succeed (id, maybeType, term)))))
-
-typeAnnotation : Parser s Type
-typeAnnotation =
-  token (string ":") |> andThen (\_ ->
-  typeExpr)
+  succeed (id, (mult, aType))))))
 
 
 
@@ -166,20 +156,32 @@ atom =
     [ var
     , linearLambda
     , unrestrictedLambda
-    , simultaneousPair
-    , simultaneousLet
+    , pair
+    , letPair
     , unit
-    , unitLet
-    , alternativePair
-    , fst
-    , snd
-    , top
+    , letUnit
     , inl
     , inr
     , caseExpr
-    , absurd
-    , bang
-    , bangLet
+    , ofCourse
+    , letOfCourse
+    , send
+    , receive
+    , selectLeft
+    , selectRight
+    , branch
+    , close
+    , newAccess
+    , accept
+    , request
+    , newSession
+    , fork
+    , spawn
+    , fold
+    , unfold
+    , letLin
+    , letUn
+    , letRec
     , exprBetweenParens
     ]
 
@@ -189,40 +191,38 @@ var = Combine.map Term_Var identifier
 linearLambda : Parser s Term
 linearLambda = 
   token (string "\\") |> andThen (\_ ->
-  token (string "<") |> andThen (\_ ->
+  token (string "lin") |> andThen (\_ ->
   identifier |> andThen (\id ->
   token (string ":") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
-  token (string ">") |> andThen (\_ ->
   token (string ".") |> andThen (\_ ->
   expression |> andThen (\exp ->
   succeed (Term_LinearLambda id aType exp)
-  ))))))))
+  )))))))
 
 unrestrictedLambda : Parser s Term
 unrestrictedLambda = 
   token (string "\\") |> andThen (\_ ->
-  token (string "[") |> andThen (\_ ->
+  token (string "un") |> andThen (\_ ->
   identifier |> andThen (\id ->
   token (string ":") |> andThen (\_ ->
   typeExpr |> andThen (\aType ->
-  token (string "]") |> andThen (\_ ->
   token (string ".") |> andThen (\_ ->
   expression |> andThen (\exp ->
   succeed (Term_UnrestrictedLambda id aType exp)
-  ))))))))
+  )))))))
 
-simultaneousPair : Parser s Term
-simultaneousPair =
+pair : Parser s Term
+pair =
   token (string "{") |> andThen (\_ ->
   expression |> andThen (\e1 ->
   token (string ",") |> andThen (\_ ->
   expression |> andThen (\e2 ->
   token (string "}") |> andThen (\_ ->
-  succeed (Term_SimultaneousPair e1 e2))))))
+  succeed (Term_Pair e1 e2))))))
 
-simultaneousLet : Parser s Term
-simultaneousLet =
+letPair : Parser s Term
+letPair =
   token (string "let") |> andThen (\_ ->
   token (string "{") |> andThen (\_ ->
   identifier |> andThen (\id1 ->
@@ -233,7 +233,7 @@ simultaneousLet =
   expression |> andThen (\e1 ->
   token (string "in") |> andThen (\_ ->
   expression |> andThen (\e2 ->
-  succeed (Term_SimultaneousLet id1 id2 e1 e2)))))))))))
+  succeed (Term_LetPair id1 id2 e1 e2)))))))))))
 
 unit : Parser s Term
 unit = 
@@ -241,8 +241,8 @@ unit =
   token (string "}") |> andThen (\_ ->
   succeed Term_Unit))
 
-unitLet : Parser s Term
-unitLet =
+letUnit : Parser s Term
+letUnit =
   token (string "let") |> andThen (\_ ->
   token (string "{") |> andThen (\_ ->
   token (string "}") |> andThen (\_ ->
@@ -250,31 +250,7 @@ unitLet =
   expression |> andThen (\e1 ->
   token (string "in") |> andThen (\_ ->
   expression |> andThen (\e2 ->
-  succeed (Term_UnitLet e1 e2))))))))
-
-alternativePair : Parser s Term
-alternativePair =
-  token (string "<") |> andThen (\_ ->
-  expression |> andThen (\e1 ->
-  token (string ",") |> andThen (\_ ->
-  expression |> andThen (\e2 ->
-  token (string ">") |> andThen (\_ ->
-  succeed (Term_AlternativePair e1 e2))))))
-
-fst : Parser s Term
-fst =
-  token (string "fst") |> andThen (\_ ->
-  atom |> andThen (\e ->
-  succeed (Term_Fst e)))
-
-snd : Parser s Term
-snd =
-  token (string "snd") |> andThen (\_ ->
-  atom |> andThen (\e ->
-  succeed (Term_Snd e)))
-
-top : Parser s Term
-top = token (string "<>") |> onsuccess Term_Top
+  succeed (Term_LetUnit e1 e2))))))))
 
 inl : Parser s Term
 inl =
@@ -310,23 +286,14 @@ caseExpr =
   expression |> andThen (\e2 ->
   succeed (Term_Case e id1 e1 id2 e2)))))))))))))
 
-absurd : Parser s Term
-absurd =
-  token (string "absurd") |> andThen (\_ ->
-  token (string "[") |> andThen (\_ ->
-  typeExpr |> andThen (\aType ->
-  token (string "]") |> andThen (\_ ->
-  atom |> andThen (\e ->
-  succeed (Term_Absurd aType e))))))
-
-bang : Parser s Term
-bang =
+ofCourse : Parser s Term
+ofCourse =
   token (string "@") |> andThen (\_ ->
   atom |> andThen (\e ->
-  succeed (Term_Bang e)))
+  succeed (Term_OfCourse e)))
 
-bangLet : Parser s Term
-bangLet =
+letOfCourse : Parser s Term
+letOfCourse =
   token (string "let") |> andThen (\_ ->
   token (string "@") |> andThen (\_ ->
   identifier |> andThen (\id ->
@@ -334,7 +301,154 @@ bangLet =
   expression |> andThen (\e1 ->
   token (string "in") |> andThen (\_ ->
   expression |> andThen (\e2 ->
-  succeed (Term_BangLet id e1 e2))))))))
+  succeed (Term_LetOfCourse id e1 e2))))))))
+
+send : Parser s Term
+send =
+  token (string "send") |> andThen (\_ ->
+  atom |> andThen (\e1 ->
+  atom |> andThen (\e2 ->
+  succeed (Term_Send e1 e2))))
+
+receive : Parser s Term
+receive =
+  token (string "receive") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Receive e)))
+
+selectLeft : Parser s Term
+selectLeft =
+  token (string "select") |> andThen (\_ ->
+  token (string "left") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_SelectLeft e))))
+
+selectRight : Parser s Term
+selectRight =
+  token (string "select") |> andThen (\_ ->
+  token (string "right") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_SelectRight e))))
+
+branch : Parser s Term
+branch =
+  token (string "branch") |> andThen (\_ ->
+  expression |> andThen (\e ->
+  token (string "of") |> andThen (\_ ->
+  token (string "left") |> andThen (\_ ->
+  identifier |> andThen (\id1 ->
+  token (string "->") |> andThen (\_ ->
+  expression |> andThen (\e1 ->
+  token (string ";") |> andThen (\_ ->
+  token (string "right") |> andThen (\_ ->
+  identifier |> andThen (\id2 ->
+  token (string "->") |> andThen (\_ ->
+  expression |> andThen (\e2 ->
+  succeed (Term_Branch e id1 e1 id2 e2)))))))))))))
+
+close : Parser s Term
+close =
+  token (string "close") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Close e)))
+
+newAccess : Parser s Term
+newAccess =
+  token (string "new") |> andThen (\_ ->
+  token (string "access") |> andThen (\_ ->
+  token (string "[") |> andThen (\_ ->
+  typeExpr |> andThen (\aType ->
+  token (string "]") |> andThen (\_ ->
+  identifier |> andThen (\id1 ->
+  token (string ",") |> andThen (\_ ->
+  identifier |> andThen (\id2 ->
+  token (string "in") |> andThen (\_ ->
+  expression |> andThen (\e ->
+  succeed (Term_NewAccess aType id1 id2 e)))))))))))
+
+accept : Parser s Term
+accept =
+  token (string "accept") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Accept e)))
+
+request : Parser s Term
+request =
+  token (string "request") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Request e)))
+
+newSession : Parser s Term
+newSession =
+  token (string "new") |> andThen (\_ ->
+  token (string "session") |> andThen (\_ ->
+  token (string "[") |> andThen (\_ ->
+  typeExpr |> andThen (\aType ->
+  token (string "]") |> andThen (\_ ->
+  succeed (Term_NewSession aType))))))
+
+fork : Parser s Term
+fork =
+  token (string "fork") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Fork e)))
+
+spawn : Parser s Term
+spawn =
+  token (string "spawn") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Spawn e)))
+
+fold : Parser s Term
+fold =
+  token (string "fold") |> andThen (\_ ->
+  token (string "[") |> andThen (\_ ->
+  typeExpr |> andThen (\aType ->
+  token (string "]") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Fold aType e))))))
+
+unfold : Parser s Term
+unfold =
+  token (string "unfold") |> andThen (\_ ->
+  atom |> andThen (\e ->
+  succeed (Term_Unfold e)))
+
+letLin : Parser s Term
+letLin =
+  token (string "let") |> andThen (\_ ->
+  token (string "lin") |> andThen (\_ ->
+  identifier |> andThen (\id ->
+  maybe typeAnnotation |> andThen (\maybeType ->
+  token (string "=") |> andThen (\_ ->
+  expression |> andThen (\e1 ->
+  token (string "in") |> andThen (\_ ->
+  expression |> andThen (\e2 ->
+  succeed (Term_LetLin id maybeType e1 e2)))))))))
+
+letUn : Parser s Term
+letUn =
+  token (string "let") |> andThen (\_ ->
+  token (string "un") |> andThen (\_ ->
+  identifier |> andThen (\id ->
+  maybe typeAnnotation |> andThen (\maybeType ->
+  token (string "=") |> andThen (\_ ->
+  expression |> andThen (\e1 ->
+  token (string "in") |> andThen (\_ ->
+  expression |> andThen (\e2 ->
+  succeed (Term_LetUn id maybeType e1 e2)))))))))
+
+letRec : Parser s Term
+letRec =
+  token (string "let") |> andThen (\_ ->
+  token (string "rec") |> andThen (\_ ->
+  identifier |> andThen (\id ->
+  typeAnnotation |> andThen (\aType ->
+  token (string "=") |> andThen (\_ ->
+  expression |> andThen (\e1 ->
+  token (string "in") |> andThen (\_ ->
+  expression |> andThen (\e2 ->
+  succeed (Term_LetRec id aType e1 e2)))))))))
 
 exprBetweenParens : Parser s Term
 exprBetweenParens = between (token (string "(")) (token (string ")")) (lazy (\_ -> expression))
@@ -345,46 +459,105 @@ exprBetweenParens = between (token (string "(")) (token (string ")")) (lazy (\_ 
 
 typeExpr : Parser s Type
 typeExpr =
-  chainr fnConnective additiveChain
+  chainr fnTypeCons sumChain
 
-fnConnective : Parser s (Type -> Type -> Type)
-fnConnective =
+fnTypeCons : Parser s (Type -> Type -> Type)
+fnTypeCons =
   choice
     [ token (string "-o") |> onsuccess Type_LinearFn
     , token (string "->") |> onsuccess Type_UnrestrictedFn
     ]
 
-additiveChain : Parser s Type
-additiveChain =
-  chainl additiveConnective multiplicativeChain
+sumChain : Parser s Type
+sumChain =
+  chainl sumTypeCons productChain
 
-additiveConnective : Parser s (Type -> Type -> Type)
-additiveConnective =
-  choice
-    [ token (string "&") |> onsuccess Type_AlternativeProduct
-    , token (string "+") |> onsuccess Type_Sum
-    ]
+sumTypeCons : Parser s (Type -> Type -> Type)
+sumTypeCons =
+  token (string "+") |> onsuccess Type_Sum
 
-multiplicativeChain : Parser s Type
-multiplicativeChain =
-  chainl multiplicativeConnective typeAtom
+productChain : Parser s Type
+productChain =
+  chainl productTypeCons typeAtom
 
-multiplicativeConnective : Parser s (Type -> Type -> Type)
-multiplicativeConnective = token (string "*") |> onsuccess (Type_SimultaneousProduct)
+productTypeCons : Parser s (Type -> Type -> Type)
+productTypeCons = 
+  token (string "*") |> onsuccess (Type_SimultaneousProduct)
 
 typeAtom : Parser s Type
 typeAtom =
   choice
-    [ typeConstant
-    , token (string "1") |> onsuccess Type_Unit
-    , token (string "T") |> onsuccess Type_Top
-    , token (string "0") |> onsuccess Type_Zero
+    [ typeVariable
+    , typeRec
+    , typeSend
+    , typeReceive
+    , typeSelect
+    , typeBranch
+    , typeEnd
+    , typeUnit
     , typeOfCourse
+    , typeAccept
+    , typeRequest
+    , typeDual
     , typeBetweenParens
     ]
 
-typeConstant : Parser s Type
-typeConstant = Combine.map Type_Constant identifier
+typeVariable : Parser s Type
+typeVariable = Combine.map Type_Var identifier
+
+typeRec : Parser s Type
+typeRec =
+  token (string "rec") |> andThen (\_ ->
+  identifier |> andThen (\id ->
+  token (string ":") |> andThen (\_ ->
+  kindExpr |> andThen (\kind ->
+  token (string ".") |> andThen (\_ ->
+  typeExpr |> andThen (\aType ->
+  succeed (Type_Rec id kind aType)))))))
+
+typeSend : Parser s Type
+typeSend =
+  token (string "!") |> andThen (\_ ->
+  typeExpr |> andThen (\type1 ->
+  token (string ".") |> andThen (\_ ->
+  typeExpr |> andThen (\type2 ->
+  succeed (Type_Send type1 type2)))))
+
+typeReceive : Parser s Type
+typeReceive =
+  token (string "?") |> andThen (\_ ->
+  typeExpr |> andThen (\type1 ->
+  token (string ".") |> andThen (\_ ->
+  typeExpr |> andThen (\type2 ->
+  succeed (Type_Receive type1 type2)))))
+
+typeSelect : Parser s Type
+typeSelect =
+  token (string "+") |> andThen (\_ ->
+  token (string "{") |> andThen (\_ ->
+  typeExpr |> andThen (\type1 ->
+  token (string ",") |> andThen (\_ ->
+  typeExpr |> andThen (\type2 ->
+  token (string "}") |> andThen (\_ ->
+  succeed (Type_Select type1 type2)))))))
+
+typeBranch : Parser s Type
+typeBranch =
+  token (string "&") |> andThen (\_ ->
+  token (string "{") |> andThen (\_ ->
+  typeExpr |> andThen (\type1 ->
+  token (string ",") |> andThen (\_ ->
+  typeExpr |> andThen (\type2 ->
+  token (string "}") |> andThen (\_ ->
+  succeed (Type_Branch type1 type2)))))))
+
+typeEnd : Parser s Type
+typeEnd =
+  token (string "End") |> onsuccess Type_End
+
+typeUnit : Parser s Type
+typeUnit =
+  token (string "1") |> onsuccess Type_Unit
 
 typeOfCourse : Parser s Type
 typeOfCourse =
@@ -392,5 +565,24 @@ typeOfCourse =
   typeAtom |> andThen (\aType ->
   succeed (Type_OfCourse aType)))
 
+typeAccept : Parser s Type
+typeAccept =
+  token (string "Accept") |> andThen (\_ ->
+  typeAtom |> andThen (\aType ->
+  succeed (Type_Accept aType)))
+
+typeRequest : Parser s Type
+typeRequest =
+  token (string "Request") |> andThen (\_ ->
+  typeAtom |> andThen (\aType ->
+  succeed (Type_Request aType)))
+
+typeDual : Parser s Type
+typeDual =
+  token (string "dual") |> andThen (\_ ->
+  typeBetweenParens |> andThen (\aType ->
+  succeed (Type_Dual aType)))
+
 typeBetweenParens : Parser s Type
-typeBetweenParens = between (token (string "(")) (token (string ")")) (lazy (\_ -> typeExpr))
+typeBetweenParens = 
+  between (token (string "(")) (token (string ")")) (lazy (\_ -> typeExpr))
