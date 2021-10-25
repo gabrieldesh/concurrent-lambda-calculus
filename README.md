@@ -1,4 +1,7 @@
-# Linear lambda calculus simulator
-A web application that simulates the linear lambda calculus and intutitionistic linear logic: https://gabrieldesh.github.io/linear-lambda/.
+# Simulador de cálculo-lambda concorrente
+Uma aplicação web que simula uma variação do cálculo-lambda com operações de concorrência e tipos de sessão: 
+https://gabrieldesh.github.io/session-typed-lambda/.
 
-See the [examples](examples/) directory for code and syntax examples.
+Desenvolvido como parte do trabalho final de graduação em Ciência da Computação.
+
+Consulte o diretório [examples](examples/) para ver exemplos de código.

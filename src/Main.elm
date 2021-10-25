@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import AbstractSyntax exposing (..)
 import Parsing exposing (parseProgram)
---import TypeInference exposing (typeInferProgram)
+import TypeInference exposing (typeInferProgram)
 --import Evaluation exposing (evalProgram, Value(..), valueToString)
 import Browser
 import Html exposing (..)
@@ -84,19 +84,20 @@ viewParsed code =
       pre [] [ text "Erro de sintaxe" ]
 
     TypeError _ error ->
-      pre [] [ text ("Sintaxe OK") ]
+      pre [] [ text ("Erro de tipo: " ++ error) ]
     
     EvaluationError _ aType ->
-      pre [] [ text ("Value: \n<stuck>\n\n")
-             , text ("Type: \n" ++ typeToString aType) ]
+      pre [] [-- text ("Valor: \n<erro>\n\n")
+             --, 
+             text ("Tipo: \n" ++ typeToString aType) ]
     
     {-Success _ aType value ->
-      pre [] [ text ("Value: \n" ++ (valueToString value) ++ "\n\n")
-             , text ("Type: \n" ++ typeToString aType) ]-}
+      pre [] [ text ("Valor: \n" ++ (valueToString value) ++ "\n\n")
+             , text ("Tipo: \n" ++ typeToString aType) ]-}
       
 
 
--- PARSING, TYPE INFERENCE AND EVALUATION
+-- PARSING, INFERÊNCIA DE TIPO E AVALIAÇÃO
 
 type ParsingResult
   = SyntaxError String
@@ -108,14 +109,14 @@ parseInferEval : String -> ParsingResult
 parseInferEval code =
   case parseProgram code of
     Ok program ->
-      {-_case typeInferProgram program of
+      case typeInferProgram program of
         Ok aType ->
-          case evalProgram program of
+          {-case evalProgram program of
             Just value ->
               Success program aType value
-            Nothing ->
+            Nothing -> -}
               EvaluationError program aType
-        Err error -> -}
-          TypeError program "error"
+        Err error -> 
+          TypeError program error
     Err errors ->
       SyntaxError (String.join " or " errors)

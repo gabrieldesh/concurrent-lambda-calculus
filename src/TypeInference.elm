@@ -1,451 +1,970 @@
 module TypeInference exposing (typeInferProgram)
 
 import AbstractSyntax exposing (..)
-import Utils exposing (lookup, lookupAndUpdate)
+import Utils exposing (lookup)
 import Result exposing (andThen, mapError)
 
 
--- PROGRAM TYPE INFERENCE
+-- INFERÊNCIA DE TIPO DO PROGRAMA
 
-typeInferProgram : LambdaProgram -> Result String Type
-typeInferProgram { atomicTypes, typedefs, unrestrictedContext, linearContext, defs, mainTerm } =
-  checkTypeEnvironment atomicTypes typedefs |> andThen (\typeContext ->
-  checkSimpleContext typeContext [] unrestrictedContext Unrestricted |> andThen (\context1 ->
-  checkSimpleContext typeContext context1 linearContext (Linear True) |> andThen (\context2 ->
-  typeInferDefEnv typeContext typedefs context2 defs |> andThen (\context ->
-  typeInferTerm typeContext typedefs context mainTerm |> andThen (\(aType, outCtx, slack) ->
-  if slack
-  then
-    Ok aType
-  else
-    checkOutContext outCtx |> andThen (\_ ->
-    Ok aType))))))
+typeInferProgram : STLProgram -> Result String Type
+typeInferProgram { typevars, typedefs, vars, mainTerm } =
+  checkTypedefs (List.reverse typevars) typedefs |> andThen (\typeVarContext ->
+  let
+    typeVarEnv = List.reverse typedefs
+  in
+  checkVarDeclarations typeVarContext typeVarEnv [] vars |> andThen (\termVarContext ->
+  typeInferTerm typeVarContext typeVarEnv termVarContext mainTerm
+    |> andThen (\(aType, outputContext) ->
+  checkUsedLinVars outputContext |> andThen (\_ ->
+  Ok (resolveDualEager aType)))))
 
-checkOutContext : Context -> Result String ()
-checkOutContext outCtx =
-  case outCtx of
+checkUsedLinVars : TermVarContext -> Result String ()
+checkUsedLinVars context =
+  case context of
     [] ->
       Ok ()
 
-    (id, (_, Linear True)) :: _ ->
-      Err ("The linear variable " ++ id ++ " is not used")
+    (id, (_, Linear NotUsed)) :: _ ->
+      Err ("A variável linear " ++ id ++ " não foi usada")
     
     _ :: xs ->
-      checkOutContext xs
+      checkUsedLinVars xs
 
 
 
---- TYPE AND TYPE ENVIRONMENT WELL-FORMEDNESS
+--- BOA-FORMAÇÃO DE TIPOS
 
--- Checks if all type constants are defined before their use.
-checkTypeEnvironment : TypeContext -> TypeEnvironment -> Result String TypeContext
-checkTypeEnvironment typeContext env =
-  case env of
+-- Checa se todas as definições de tipo são bem-formadas. Retorna um erro se algum tipo é mal-formado, ou o 
+-- TypeVarContext estendido com as novas variáveis de tipo definidas.
+checkTypedefs : TypeVarContext -> TypeVarEnv -> Result String TypeVarContext
+checkTypedefs typeVarContext typeVarEnv =
+  case typeVarEnv of
     [] ->
-      Ok typeContext
+      Ok typeVarContext
     
     (id, aType) :: xs ->
-      checkType typeContext aType
-        |> mapError (\e -> "In the type definition of " ++ id ++ ": " ++ e)
-        |> andThen (\_ ->
-      checkTypeEnvironment (id :: typeContext) xs)
+      checkType typeVarContext aType
+        |> mapError (\e -> "Na definição de " ++ id ++ ": " ++ e)
+        |> andThen (\kind ->
+      checkTypedefs ((id, kind) :: typeVarContext) xs)
 
--- Checks if all type constants occurring in a type are defined, given a context of defined type constants.
-checkType : TypeContext -> Type -> Result String ()
-checkType typeContext aType =
+-- Checa se um tipo é bem-formado. Retorna o kind, ou um erro se o tipo é mal-formado.
+checkType : TypeVarContext -> Type -> Result String Kind
+checkType typeVarContext aType =
   case aType of
-    Type_Constant id ->
-      if List.member id typeContext
-      then Ok ()
-      else Err ("The type " ++ id ++ " was not declared")
+    Type_Var id ->
+      case lookup id typeVarContext of
+        Just kind -> Ok kind
+        Nothing   -> Err ("A variável de tipo " ++ id ++ " não foi declarada")
+    
+    Type_Rec id declaredKind t ->
+      checkType ((id, declaredKind) :: typeVarContext) t |> andThen (\inferredKind ->
+      if inferredKind == declaredKind
+      then Ok declaredKind
+      else Err ("O kind declarado da variável recursiva " ++ id ++ " é " ++ kindToString declaredKind 
+        ++ ", mas o corpo da recursão, " ++ typeToString t 
+        ++ ", é do kind " ++ kindToString inferredKind))
+    
+    Type_Send t1 t2 ->
+      checkType typeVarContext t1 |> andThen (\_ ->
+      checkType typeVarContext t2 |> andThen (\kind ->
+      if kind == Kind_SessionType
+      then Ok Kind_SessionType
+      else Err ("A continuação de um tipo send (!_._) deve ser um tipo de sessão, mas o tipo fornecido foi "
+        ++ typeToString t2 ++ ", que é do kind *ns")))
+    
+    Type_Receive t1 t2 ->
+      checkType typeVarContext t1 |> andThen (\_ ->
+      checkType typeVarContext t2 |> andThen (\kind ->
+      if kind == Kind_SessionType
+      then Ok Kind_SessionType
+      else Err ("A continuação de um tipo receive (?_._) deve ser um tipo de sessão, mas o tipo fornecido foi "
+        ++ typeToString t2 ++ ", que é do kind *ns")))
+    
+    Type_Select t1 t2 ->
+      checkType typeVarContext t1 |> andThen (\kind1 ->
+      checkType typeVarContext t2 |> andThen (\kind2 ->
+      if kind1 == Kind_SessionType
+      then
+        if kind2 == Kind_SessionType
+        then Ok Kind_SessionType
+        else Err ("A opção right de um tipo select (+{_, _}) deve ser um tipo de sessão, mas o tipo fornecido foi "
+          ++ typeToString t2 ++ ", que é do kind *ns")
+      else
+        Err ("A opção left de um tipo select (+{_, _}) deve ser um tipo de sessão, mas o tipo fornecido foi "
+          ++ typeToString t1 ++ ", que é do kind *ns")))
+    
+    Type_Branch t1 t2 ->
+      checkType typeVarContext t1 |> andThen (\kind1 ->
+      checkType typeVarContext t2 |> andThen (\kind2 ->
+      if kind1 == Kind_SessionType
+      then
+        if kind2 == Kind_SessionType
+        then Ok Kind_SessionType
+        else Err ("A opção right de um tipo branch (&{_, _}) deve ser um tipo de sessão, mas o tipo fornecido foi "
+          ++ typeToString t2 ++ ", que é do kind *ns")
+      else
+        Err ("A opção left de um tipo branch (&{_, _}) deve ser um tipo de sessão, mas o tipo fornecido foi "
+          ++ typeToString t1 ++ ", que é do kind *ns")))
+    
+    Type_End ->
+      Ok Kind_SessionType
     
     Type_LinearFn t1 t2 ->
-      checkType typeContext t1 |> andThen (\_ ->
-      checkType typeContext t2)
+      checkType typeVarContext t1 |> andThen (\_ ->
+      checkType typeVarContext t2 |> andThen (\_ ->
+      Ok Kind_NonSessionType))
     
     Type_UnrestrictedFn t1 t2 ->
-      checkType typeContext t1 |> andThen (\_ ->
-      checkType typeContext t2)
+      checkType typeVarContext t1 |> andThen (\_ ->
+      checkType typeVarContext t2 |> andThen (\_ ->
+      Ok Kind_NonSessionType))
     
-    Type_SimultaneousProduct t1 t2 ->
-      checkType typeContext t1 |> andThen (\_ ->
-      checkType typeContext t2)
+    Type_Product t1 t2 ->
+      checkType typeVarContext t1 |> andThen (\_ ->
+      checkType typeVarContext t2 |> andThen (\_ ->
+      Ok Kind_NonSessionType))
     
     Type_Unit ->
-      Ok ()
-    
-    Type_AlternativeProduct t1 t2 ->
-      checkType typeContext t1 |> andThen (\_ ->
-      checkType typeContext t2)
-    
-    Type_Top ->
-      Ok ()
+      Ok Kind_NonSessionType
     
     Type_Sum t1 t2 ->
-      checkType typeContext t1 |> andThen (\_ ->
-      checkType typeContext t2)
+      checkType typeVarContext t1 |> andThen (\_ ->
+      checkType typeVarContext t2 |> andThen (\_ ->
+      Ok Kind_NonSessionType))
     
-    Type_Zero ->
-      Ok ()
+    Type_OfCourse t ->
+      checkType typeVarContext t |> andThen (\_ ->
+      Ok Kind_NonSessionType)
+    
+    Type_Accept t ->
+      checkType typeVarContext t |> andThen (\kind ->
+      if kind == Kind_SessionType
+      then Ok Kind_NonSessionType
+      else Err ("O construtor de tipo Accept espera receber um tipo de sessão, mas o tipo fornecido foi "
+        ++ typeToString t ++ ", que é do kind *ns"))
+    
+    Type_Request t ->
+      checkType typeVarContext t |> andThen (\kind ->
+      if kind == Kind_SessionType
+      then Ok Kind_NonSessionType
+      else Err ("O construtor de tipo Request espera receber um tipo de sessão, mas o tipo fornecido foi "
+        ++ typeToString t ++ ", que é do kind *ns"))
+    
+    Type_Dual t ->
+      checkType typeVarContext t |> andThen (\kind ->
+      if kind == Kind_SessionType
+      then Ok Kind_SessionType
+      else Err ("A operação de dual é definida apenas para tipos de sessão, mas o tipo fornecido foi "
+        ++ typeToString t ++ ", que é do kind *ns"))
+
+checkAndApplySubs : TypeVarContext -> TypeVarEnv -> Type -> Result String (Type, Kind)
+checkAndApplySubs typeVarContext typeVarEnv aType =
+  checkType typeVarContext aType |> andThen (\kind ->
+  let
+    t = applySubs typeVarEnv aType
+  in
+  Ok (t, kind))
+
+
+
+-- BOA-FORMAÇÃO DO CONTEXTO DE VARIÁVEIS DE TERMO
+
+-- Guarda o tipo e multiplicidade de cada variável de termo, e informação de uso das variáveis lineares.
+type alias TermVarContext = List (Id, (Type, VarUsage))
+
+type VarUsage = Linear LinearStatus | Unrestricted
+
+type LinearStatus = NotUsed | Used | UsedUnrestrictedly
+
+-- Marca uma variável linear como usada.
+markAsUsed : Id -> TermVarContext -> TermVarContext
+markAsUsed k context = 
+  case context of
+    [] -> []
+
+    (id, (aType, Unrestricted)) :: xs ->
+      (id, (aType, Unrestricted)) :: (markAsUsed k xs)
+    
+    (id, (aType, Linear status)) :: xs ->
+      if id == k then
+        (id, (aType, Linear Used)) :: xs
+      else
+        (id, (aType, Linear status)) :: (markAsUsed k xs)
+
+-- Marca que todas as variáveis lineares estão em um contexto que pode ser replicado de forma irrestrita
+-- (zero ou mais vezes), como por exemplo a construção de um tipo "of course" (@) ou um argumento aplicado 
+-- a uma função irrestrita.
+markAsUsedUnrestrictedly : TermVarContext -> TermVarContext
+markAsUsedUnrestrictedly context =
+  let
+    f (id, (aType, varUsage)) =
+      case varUsage of
+        Unrestricted ->
+          (id, (aType, Unrestricted))
+    
+        Linear _ ->
+          (id, (aType, Linear UsedUnrestrictedly))
+  in
+    List.map f context
+
+isUsed : Id -> TermVarContext -> Bool
+isUsed id context =
+  case lookup id context of
+    Just (_, Linear Used) -> True
+    _                     -> False
+
+-- Checa se o tipo em cada declaração de variável de termo é bem-formado, e substitui as variáveis de tipo pelas 
+-- suas definições. Retorna um erro se algum tipo é mal-formado, ou retorna as declarações na forma de um 
+-- TermVarContext, com as variáveis lineares marcadas como não usadas.
+checkVarDeclarations : TypeVarContext -> TypeVarEnv -> TermVarContext -> VarDeclarations 
+  -> Result String TermVarContext
+checkVarDeclarations typeVarContext typeVarEnv termVarContext vars =
+  case vars of
+    [] ->
+      Ok termVarContext
+    
+    (id, (multiplicity, aType)) :: xs ->
+      checkAndApplySubs typeVarContext typeVarEnv aType
+        |> mapError (\e -> "Na declaração de " ++ id ++ ": " ++ e)
+        |> andThen (\(t, _) ->
+      let
+        usage = case multiplicity of
+          Lin -> Linear NotUsed
+          Un  -> Unrestricted
+        extendedContext = (id, (t, usage)) :: termVarContext
+      in
+      checkVarDeclarations typeVarContext typeVarEnv extendedContext xs)
+
+
+
+-- SUBSTITUIÇÃO EM TIPOS
+
+-- Substitui todas as definições de typeVarEnv dentro do tipo aType.
+applySubs : TypeVarEnv -> Type -> Type
+applySubs typeVarEnv aType =
+  case typeVarEnv of
+    [] -> aType
+
+    (id, t) :: xs ->
+      applySubs xs (subs aType id t)
+
+-- Substitui a variável id pelo tipo t dentro do tipo aType
+-- aType[id := t]
+subs : Type -> Id -> Type -> Type
+subs aType id t =
+  subsAux (freeVars t) aType id t
+
+subsAux : List Id -> Type -> Id -> Type -> Type
+subsAux freeVarsT aType id t = 
+  case aType of
+    Type_Var otherId ->
+      if otherId == id then
+        t
+      else
+        Type_Var otherId
+    
+    Type_Rec binderId kind body ->
+      if id == binderId then
+        Type_Rec binderId kind body
+      else
+        if (List.member binderId freeVarsT) then
+          let
+            newId       = findNewId binderId (freeVarsT ++ (freeVars body))
+            newBody     = subs body binderId (Type_Var newId)
+            subsNewBody = subsAux freeVarsT newBody id t
+          in
+          Type_Rec newId kind subsNewBody
+        else
+          let
+            subsBody = subsAux freeVarsT body id t
+          in
+          Type_Rec binderId kind subsBody
+    
+    Type_Send t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_Send subsT1 subsT2
+    
+    Type_Receive t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_Receive subsT1 subsT2
+    
+    Type_Select t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_Select subsT1 subsT2
+    
+    Type_Branch t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_Branch subsT1 subsT2
+    
+    Type_End ->
+      Type_End
+    
+    Type_LinearFn t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_LinearFn subsT1 subsT2
+    
+    Type_UnrestrictedFn t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_UnrestrictedFn subsT1 subsT2
+    
+    Type_Product t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_Product subsT1 subsT2
+    
+    Type_Unit ->
+      Type_Unit
+    
+    Type_Sum t1 t2 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+        subsT2 = subsAux freeVarsT t2 id t
+      in
+      Type_Sum subsT1 subsT2
     
     Type_OfCourse t1 ->
-      checkType typeContext t1
-
-
-
--- CONTEXT WELL-FORMEDNESS
-
--- Checks if all types in a SimpleContext are well-formed. Returns an error (if any) or a Context
--- assigning to each variable its declared type and the Multiplicity given as parameter.
-checkSimpleContext : TypeContext -> Context -> SimpleContext -> Multiplicity -> Result String Context
-checkSimpleContext typeContext context simpleContext multiplicity =
-  case simpleContext of
-    [] ->
-      Ok context
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+      in
+      Type_OfCourse subsT1
     
-    (id, aType) :: xs ->
-      checkType typeContext aType
-        |> mapError (\e -> "In the declaration of " ++ id ++ ": " ++ e)
-        |> andThen (\_ ->
-      checkSimpleContext typeContext ((id, (aType, multiplicity)) :: context) xs multiplicity)
-
-
-
--- DEFINITION ENVIRONMENT TYPE INFERENCE
-
--- Checks if all definitions are well-typed. Returns a type error (if any) or the context assigning to
--- each defined variable its inferred type.
-typeInferDefEnv : TypeContext -> TypeEnvironment -> Context -> DefinitionEnvironment -> Result String Context
-typeInferDefEnv typeContext typeEnv context defEnv =
-  case defEnv of
-    [] ->
-      Ok context
+    Type_Accept t1 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+      in
+      Type_Accept subsT1
     
-    (id, maybeType, term) :: xs ->
-      typeInferTerm typeContext typeEnv (markAllAsUnavailable context) term
-        |> mapError (\e -> "In the definition of " ++ id ++ ": " ++ e)
-        |> andThen (\(inferredType, _, _) ->
-      case maybeType of
-        Just declaredType ->
-          checkType typeContext declaredType
-            |> mapError (\e -> "In the type annotation of " ++ id ++ ": " ++ e)
-            |> andThen (\_ ->
-          if typesAreEqual typeEnv inferredType declaredType
-          then typeInferDefEnv typeContext typeEnv ((id, (declaredType, Unrestricted)) :: context) xs
-          else
-            Err ("Declared type of " ++ id ++ " is " ++ typeToString declaredType
-              ++ ", but the inferred type is " ++ typeToString inferredType))
-        
-        Nothing ->
-          typeInferDefEnv typeContext typeEnv ((id, (inferredType, Unrestricted)) :: context) xs)
+    Type_Request t1 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+      in
+      Type_Request subsT1
+    
+    Type_Dual t1 ->
+      let
+        subsT1 = subsAux freeVarsT t1 id t
+      in
+      Type_Dual subsT1
 
-
-
--- TYPE ALIAS RESOLUTION
-
-resolveTypeAlias : TypeEnvironment -> Type -> Type
-resolveTypeAlias typeEnv aType =
+freeVars : Type -> List Id
+freeVars aType =
   case aType of
-    Type_Constant id ->
-      case lookup id typeEnv of
-        Just anotherType ->
-          resolveTypeAlias typeEnv anotherType
-        
-        Nothing ->
-          Type_Constant id
+    Type_Var id ->
+      [id]
     
-    x -> x
+    Type_Rec id _ t ->
+      List.filter (\x -> x /= id) (freeVars t)
+    
+    Type_Send t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_Receive t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_Select t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_Branch t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_End ->
+      []
+    
+    Type_LinearFn t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_UnrestrictedFn t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_Product t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_Unit ->
+      []
+    
+    Type_Sum t1 t2 ->
+      (freeVars t1) ++ (freeVars t2)
+    
+    Type_OfCourse t ->
+      freeVars t
+    
+    Type_Accept t ->
+      freeVars t
+    
+    Type_Request t ->
+      freeVars t
+    
+    Type_Dual t ->
+      freeVars t
 
-typesAreEqual : TypeEnvironment -> Type -> Type -> Bool
-typesAreEqual typeEnv type1 type2 =
-  case (resolveTypeAlias typeEnv type1, resolveTypeAlias typeEnv type2) of
-    (Type_Constant id1, Type_Constant id2) ->
+-- Renomeia id até encontrar um nome que não ocorre em idList (lista de nomes já usados)
+findNewId : Id -> List Id -> Id
+findNewId id idList =
+  if List.member id idList then
+    findNewId (id ++ "'") idList
+  else
+    id
+
+
+
+-- DUALIZAÇÃO
+
+-- Resolve as operações de dualização em aType até obter um tipo que não seja da forma dual(A), exceto se A for 
+-- uma variável (ou se A não é um tipo de sessão, o que não deve ocorrer se aType é bem-formado).
+resolveDualLazy : Type -> Type
+resolveDualLazy aType =
+  case aType of
+    Type_Dual (Type_Var id) ->
+      Type_Dual (Type_Var id)
+    
+    Type_Dual (Type_Rec id kind body) ->
+      let
+        bodyWithDualizedVar = subs body id (Type_Dual (Type_Var id))
+      in
+      Type_Rec id kind (Type_Dual bodyWithDualizedVar)
+    
+    Type_Dual (Type_Send t1 t2) ->
+      Type_Receive t1 (Type_Dual t2)
+    
+    Type_Dual (Type_Receive t1 t2) ->
+      Type_Send t1 (Type_Dual t2)
+    
+    Type_Dual (Type_Select t1 t2) ->
+      Type_Branch (Type_Dual t1) (Type_Dual t2)
+    
+    Type_Dual (Type_Branch t1 t2) ->
+      Type_Select (Type_Dual t1) (Type_Dual t2)
+    
+    Type_Dual (Type_End) ->
+      Type_End
+    
+    Type_Dual (Type_Dual t) ->
+      resolveDualLazy t
+    
+    t -> t
+
+-- Resolve todas as operações de dualização em aType, exceto dual de variável.
+resolveDualEager : Type -> Type
+resolveDualEager aType =
+  case resolveDualLazy aType of
+    Type_Var id ->
+      Type_Var id
+    
+    Type_Rec id kind t ->
+      Type_Rec id kind (resolveDualEager t)
+    
+    Type_Send t1 t2 ->
+      Type_Send (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_Receive t1 t2 ->
+      Type_Receive (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_Select t1 t2 ->
+      Type_Select (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_Branch t1 t2 ->
+      Type_Branch (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_End ->
+      Type_End
+    
+    Type_LinearFn t1 t2 ->
+      Type_LinearFn (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_UnrestrictedFn t1 t2 ->
+      Type_UnrestrictedFn (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_Product t1 t2 ->
+      Type_Product (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_Unit ->
+      Type_Unit
+    
+    Type_Sum t1 t2 ->
+      Type_Sum (resolveDualEager t1) (resolveDualEager t2)
+    
+    Type_OfCourse t ->
+      Type_OfCourse (resolveDualEager t)
+    
+    Type_Accept t ->
+      Type_Accept (resolveDualEager t)
+    
+    Type_Request t ->
+      Type_Request (resolveDualEager t)
+    
+    Type_Dual t ->
+      Type_Dual (resolveDualEager t)
+
+
+
+-- EQUIVALÊNCIA DE TIPOS
+
+-- Testa se dois tipos são iguais a menos de alfa-equivalência.
+typesAreEqual : Type -> Type -> Bool
+typesAreEqual type1 type2 =
+  case (resolveDualLazy type1, resolveDualLazy type2) of
+    (Type_Var id1, Type_Var id2) ->
       id1 == id2
-
-    (Type_LinearFn type1_1 type1_2, Type_LinearFn type2_1 type2_2) ->
-      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
     
-    (Type_UnrestrictedFn type1_1 type1_2, Type_UnrestrictedFn type2_1 type2_2) ->
-      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    (Type_Rec id1 _ t1, Type_Rec id2 _ t2) ->
+      let
+        newId = findNewId id1 (freeVars t1 ++ freeVars t2)
+        t1VarRenamed = subs t1 id1 (Type_Var newId)
+        t2VarRenamed = subs t2 id2 (Type_Var newId)
+      in
+      typesAreEqual t1VarRenamed t2VarRenamed
     
-    (Type_SimultaneousProduct type1_1 type1_2, Type_SimultaneousProduct type2_1 type2_2) ->
-      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    (Type_Send ta1 tb1, Type_Send ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
+    
+    (Type_Receive ta1 tb1, Type_Receive ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
+    
+    (Type_Select ta1 tb1, Type_Select ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
+    
+    (Type_Branch ta1 tb1, Type_Branch ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
+    
+    (Type_End, Type_End) ->
+      True
+    
+    (Type_LinearFn ta1 tb1, Type_LinearFn ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
+    
+    (Type_UnrestrictedFn ta1 tb1, Type_UnrestrictedFn ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
+    
+    (Type_Product ta1 tb1, Type_Product ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
     
     (Type_Unit, Type_Unit) ->
       True
     
-    (Type_AlternativeProduct type1_1 type1_2, Type_AlternativeProduct type2_1 type2_2) ->
-      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    (Type_Sum ta1 tb1, Type_Sum ta2 tb2) ->
+      (typesAreEqual ta1 ta2) && (typesAreEqual tb1 tb2)
     
-    (Type_Top, Type_Top) ->
-      True
+    (Type_OfCourse t1, Type_OfCourse t2) ->
+      (typesAreEqual t1 t2)
     
-    (Type_Sum type1_1 type1_2, Type_Sum type2_1 type2_2) ->
-      typesAreEqual typeEnv type1_1 type2_1 && typesAreEqual typeEnv type1_2 type2_2
+    (Type_Accept t1, Type_Accept t2) ->
+      (typesAreEqual t1 t2)
     
-    (Type_Zero, Type_Zero) ->
-      True
+    (Type_Request t1, Type_Request t2) ->
+      (typesAreEqual t1 t2)
     
-    (Type_OfCourse type1_1, Type_OfCourse type2_1) ->
-      typesAreEqual typeEnv type1_1 type2_1
-    
-    _ ->
-      False
+    (Type_Dual t1, Type_Dual t2) ->
+      (typesAreEqual t1 t2)
 
-
-
--- TERM TYPE INFERENCE
-
-{- The term type inference is based on this handout by Frank Pfenning
-https://www.cs.cmu.edu/~fp/courses/linear/handouts/linfp.pdf
-Note that the handout is a draft, so it may contain errors.
-
-There are two differences relative to the representation of contexts:
-1. Instead of separating contexts as linear and unrestricted, this implementation uses a single context, 
-where variables are marked with their multiplicity. If the same variable name is declared as linear and
-unrestricted, this allows us to distinguish which declaration occurs in an inner scope, since the order 
-of the single context list gives the order in which the variables were declared.
-
-2. Instead of removing linear variables from the context when they are used, linear variables are marked 
-with a boolean flag that indicates if they are available. The flag is set to False when the variable is 
-used. This allows us to distinguish if a linear variable was not declared or if it was declared but was 
-already used, resulting in more precise error messages. -}
-
-type Multiplicity = Linear Bool | Unrestricted
-
-type alias Context = List (Id, (Type, Multiplicity))
-
-markAsUnavailable : Id -> Context -> Context
-markAsUnavailable = lookupAndUpdate (\(aType, multiplicity) ->
-  case multiplicity of
-    Linear _     -> (aType, Linear False)
-    Unrestricted -> (aType, Unrestricted))
-
-markAllAsUnavailable : Context -> Context
-markAllAsUnavailable = List.map (\entry ->
-  case entry of
-    (key, (aType, Linear _)) ->
-      (key, (aType, Linear False))
-    
-    x -> x)
-
-contextsAreCompatible : Context -> Bool -> Context -> Bool -> Bool
-contextsAreCompatible context1 slack1 context2 slack2 =
-  case (context1, context2) of
-    ([], []) ->
-      True
-    
-    ((_, (_, Unrestricted)) :: xs, (_, (_, Unrestricted)) :: ys) ->
-      contextsAreCompatible xs slack1 ys slack2
-
-    ((_, (_, Linear available1)) :: xs, (_, (_, Linear available2)) :: ys) ->
-      let varsAreCompatible =
-            (available1 && available2) || ((slack1 || not available1) && (slack2 || not available2))
-      in
-        varsAreCompatible && contextsAreCompatible xs slack1 ys slack2
-    
-    _ -> -- Should not happen if contexts have the same variables in the same order and multiplicity
-      False
-
-contextIntersection : Context -> Context -> Context
-contextIntersection context1 context2 =
-  case (context1, context2) of
-    ([], []) ->
-      []
-    
-    ((id, (aType, Unrestricted)) :: xs, (_, (_, Unrestricted)) :: ys) ->
-      (id, (aType, Unrestricted)) :: (contextIntersection xs ys)
-
-    ((id, (aType, Linear available1)) :: xs, (_, (_, Linear available2)) :: ys) ->
-      (id, (aType, Linear (available1 && available2))) :: (contextIntersection xs ys)
-    
-    _ -> -- Should not happen if contexts have the same variables in the same order and multiplicity
-      []
-
-isAvailable : Id -> Context -> Bool
-isAvailable id context =
-  case lookup id context of
-    Just (_, Linear available) -> available
     _ -> False
 
-typeInferTerm : TypeContext -> TypeEnvironment -> Context -> Term -> Result String (Type, Context, Bool)
-typeInferTerm typeContext typeEnv context term =
+
+
+-- INFERÊNCIA DE TIPO DE TERMOS
+
+showType : Type -> String
+showType aType = typeToString (resolveDualEager aType)
+
+checkOptionalAnnotation : TypeVarContext -> TypeVarEnv -> Type -> Maybe Type -> Result String Type
+checkOptionalAnnotation typeVarContext typeVarEnv t1 maybeType =
+  case maybeType of
+    Just aType ->
+      checkAndApplySubs typeVarContext typeVarEnv aType |> andThen (\(t2, _) ->
+      if typesAreEqual t1 t2 then
+        Ok t2
+      else
+        Err ("O tipo declarado é " ++ typeToString aType ++ ", mas o tipo inferido foi " ++ showType t1))
+    
+    Nothing ->
+      Ok t1
+
+typeInferTerm : TypeVarContext -> TypeVarEnv -> TermVarContext -> Term 
+  -> Result String (Type, TermVarContext)
+typeInferTerm typeVarContext typeVarEnv termVarContext term =
   case term of
     Term_Var id ->
-      case lookup id context of
-        Just (aType, Unrestricted) -> Ok (aType, context, False)
-        Just (aType, Linear True)  -> Ok (aType, markAsUnavailable id context, False)
-        Just (_    , Linear False) -> Err ("The linear variable " ++ id ++ " is used more than once")
-        Nothing -> Err ("The variable " ++ id ++ " was not declared")
+      case lookup id termVarContext of
+        Just (t, Unrestricted) ->
+          Ok (t, termVarContext)
+        
+        Just (t, Linear NotUsed) ->
+          Ok (t, markAsUsed id termVarContext)
+
+        Just (_ , Linear Used) ->
+          Err ("A variável linear " ++ id ++ " foi usada mais de uma vez")
+
+        Just (_ , Linear UsedUnrestrictedly) ->
+          Err ("A variável linear " ++ id ++ " está sendo usada de forma irrestrita (zero ou mais vezes)")
+        
+        Nothing ->
+          Err ("A variável " ++ id ++ " não foi declarada")
     
-    Term_LinearLambda id varType body ->
-      checkType typeContext varType |> andThen (\_ ->
-      typeInferTerm typeContext typeEnv ((id, (varType, Linear True)) :: context) body
-        |> andThen (\(bodyType, outCtx, slack) ->
-      if slack || not (isAvailable id outCtx)
-      then Ok (Type_LinearFn varType bodyType, List.drop 1 outCtx, slack)
-      else Err ("The linear variable " ++ id ++ " is not used")))
+    Term_LinearLambda id varType e ->
+      checkAndApplySubs typeVarContext typeVarEnv varType |> andThen (\(t1, _) ->
+      let
+        extendedContext = (id, (t1, Linear NotUsed)) :: termVarContext
+      in
+      typeInferTerm typeVarContext typeVarEnv extendedContext e |> andThen (\(t2, outCtx) ->
+      if isUsed id outCtx then
+        Ok (Type_LinearFn t1 t2, List.drop 1 outCtx)
+      else
+        Err ("A variável linear " ++ id ++ " não foi usada")))
     
-    Term_UnrestrictedLambda id varType body ->
-      checkType typeContext varType |> andThen (\_ ->
-      typeInferTerm typeContext typeEnv ((id, (varType, Unrestricted)) :: context) body
-        |> andThen (\(bodyType, outCtx, slack) ->
-      Ok (Type_UnrestrictedFn varType bodyType, List.drop 1 outCtx, slack)))
+    Term_UnrestrictedLambda id varType e ->
+      checkAndApplySubs typeVarContext typeVarEnv varType |> andThen (\(t1, _) ->
+      let
+        extendedContext = (id, (t1, Unrestricted)) :: termVarContext
+      in
+      typeInferTerm typeVarContext typeVarEnv extendedContext e |> andThen (\(t2, outCtx) ->
+      Ok (Type_UnrestrictedFn t1 t2, List.drop 1 outCtx)))
     
     Term_Application e1 e2 ->
-      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      case resolveTypeAlias typeEnv type1 of
-        Type_LinearFn a b ->
-          typeInferTerm typeContext typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
-          if typesAreEqual typeEnv type2 a
-          then Ok (b, outCtx2, slack1 || slack2)
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      case resolveDualLazy t1 of
+        Type_LinearFn ta tb ->
+          typeInferTerm typeVarContext typeVarEnv outCtx1 e2 |> andThen (\(t2, outCtx2) ->
+          if typesAreEqual t2 ta
+          then Ok (tb, outCtx2)
           else
-            Err ("An expression of type " ++ typeToString a ++ " was expected, but it has type "
-              ++ typeToString type2))
+            Err ("Uma expressão do tipo " ++ showType ta ++ " era esperada, mas o tipo inferido foi "
+              ++ showType t2))
         
-        Type_UnrestrictedFn a b ->
-          typeInferTerm typeContext typeEnv (markAllAsUnavailable context) e2 |> andThen (\(type2, _, _) ->
-          if typesAreEqual typeEnv type2 a
-          then Ok (b, outCtx1, slack1)
+        Type_UnrestrictedFn ta tb ->
+          typeInferTerm typeVarContext typeVarEnv (markAsUsedUnrestrictedly termVarContext) e2
+            |> andThen (\(t2, _) ->
+          if typesAreEqual t2 ta
+          then Ok (tb, outCtx1)
           else
-            Err ("An expression of type " ++ typeToString a ++ " was expected, but it has type "
-              ++ typeToString type2))
+            Err ("Uma expressão do tipo " ++ showType ta ++ " era esperada, mas o tipo inferido foi "
+              ++ showType t2))
 
-        _ -> Err ("An expression of a function type was expected, but it has type " ++ typeToString type1))
+        _ -> Err ("Uma expressão de um tipo função era esperada, mas o tipo inferido foi " ++ showType t1))
     
-    Term_SimultaneousPair e1 e2 ->
-      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      typeInferTerm typeContext typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
-      Ok (Type_SimultaneousProduct type1 type2, outCtx2, slack1 || slack2)))
+    Term_Pair e1 e2 ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      typeInferTerm typeVarContext typeVarEnv outCtx1 e2 |> andThen (\(t2, outCtx2) ->
+      Ok (Type_Product t1 t2, outCtx2)))
     
-    Term_SimultaneousLet id1 id2 e1 e2 ->
-      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      case resolveTypeAlias typeEnv type1 of
-        Type_SimultaneousProduct a b ->
-          typeInferTerm typeContext typeEnv ((id2, (b, Linear True)) :: (id1, (a, Linear True)) :: outCtx1) e2
-            |> andThen (\(type2, outCtx2, slack2) ->
+    Term_LetPair id1 id2 e1 e2 ->
+      if id1 == id2 then
+        Err "Os nomes das duas variáveis introduzidas pelo desconstrutor de par não podem ser iguais"
+      else
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      case resolveDualLazy t1 of
+        Type_Product ta tb ->
           let
-            availableId1 = isAvailable id1 outCtx2
-            availableId2 = isAvailable id2 outCtx2
+            extendedContext = (id1, (ta, Linear NotUsed)) :: (id2, (tb, Linear NotUsed)) :: outCtx1
           in
-            if slack2 || (not availableId1 && not availableId2)
-            then Ok (type2, List.drop 2 outCtx2, slack1 || slack2)
-            else
-              if availableId2
-              then Err ("The linear variable " ++ id2 ++ " is not used")
-              else Err ("The linear variable " ++ id1 ++ " is not used"))
+          typeInferTerm typeVarContext typeVarEnv extendedContext e2 |> andThen (\(t2, outCtx2) ->
+          if not (isUsed id1 outCtx2) then
+            Err ("A variável linear " ++ id1 ++ " não foi usada")
+          else if not (isUsed id2 outCtx2) then
+            Err ("A variável linear " ++ id2 ++ " não foi usada")
+          else
+            Ok (t2, List.drop 2 outCtx2))
         
         _ ->
-          Err ("An expression of simultaneous product type was expected, but it has type "
-            ++ typeToString type1))
+          Err ("Uma expressão de um tipo produto era esperada, mas o tipo inferido foi " ++ showType t1))
     
     Term_Unit ->
-      Ok (Type_Unit, context, False)
+      Ok (Type_Unit, termVarContext)
     
-    Term_UnitLet e1 e2 ->
-      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      case resolveTypeAlias typeEnv type1 of
+    Term_LetUnit e1 e2 ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      case resolveDualLazy t1 of
         Type_Unit ->
-          typeInferTerm typeContext typeEnv outCtx1 e2 |> andThen (\(type2, outCtx2, slack2) ->
-          Ok (type2, outCtx2, slack1 || slack2))
+          typeInferTerm typeVarContext typeVarEnv outCtx1 e2 |> andThen (\(t2, outCtx2) ->
+          Ok (t2, outCtx2))
         
         _ ->
-          Err ("An expression of unit type was expected, but it has type " ++ typeToString type1))
-    
-    Term_AlternativePair e1 e2 ->
-      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      typeInferTerm typeContext typeEnv context e2 |> andThen (\(type2, outCtx2, slack2) ->
-      if contextsAreCompatible outCtx1 slack1 outCtx2 slack2
-      then Ok (Type_AlternativeProduct type1 type2, contextIntersection outCtx1 outCtx2, slack1 && slack2)
-      else
-        Err "Some linear variable is used in one component of the alternative pair, but not in the other"))
-    
-    Term_Fst e ->
-      typeInferTerm typeContext typeEnv context e |> andThen (\(aType, outCtx, slack) ->
-      case resolveTypeAlias typeEnv aType of
-        Type_AlternativeProduct a _ ->
-          Ok (a, outCtx, slack)
-        
-        _ ->
-          Err ("An expression of alternative product type was expected, but it has type "
-            ++ typeToString aType))
-    
-    Term_Snd e ->
-      typeInferTerm typeContext typeEnv context e |> andThen (\(aType, outCtx, slack) ->
-      case resolveTypeAlias typeEnv aType of
-        Type_AlternativeProduct _ b ->
-          Ok (b, outCtx, slack)
-        
-        _ ->
-          Err ("An expression of alternative product type was expected, but it has type "
-            ++ typeToString aType))
-    
-    Term_Top ->
-      Ok (Type_Top, context, True)
+          Err ("Uma expressão do tipo 1 era esperada, mas o tipo inferido foi " ++ showType t1))
     
     Term_Inl type2 e ->
-      checkType typeContext type2 |> andThen (\_ ->
-      typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx, slack) ->
-      Ok (Type_Sum type1 type2, outCtx, slack)))
+      checkAndApplySubs typeVarContext typeVarEnv type2 |> andThen (\(t2, _) ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t1, outCtx) ->
+      Ok (Type_Sum t1 t2, outCtx)))
     
     Term_Inr type1 e ->
-      checkType typeContext type1 |> andThen (\_ ->
-      typeInferTerm typeContext typeEnv context e |> andThen (\(type2, outCtx, slack) ->
-      Ok (Type_Sum type1 type2, outCtx, slack)))
+      checkAndApplySubs typeVarContext typeVarEnv type1 |> andThen (\(t1, _) ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t2, outCtx) ->
+      Ok (Type_Sum t1 t2, outCtx)))
 
     Term_Case e id1 e1 id2 e2 ->
-      typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx1, slack1) ->
-      case resolveTypeAlias typeEnv type1 of
-        Type_Sum a b ->
-          typeInferTerm typeContext typeEnv ((id1, (a, Linear True)) :: outCtx1) e1
-            |> andThen (\(type2, outCtx2, slack2) ->
-          if (not slack2) && (isAvailable id1 outCtx2)
-          then Err ("The linear variable " ++ id1 ++ " is not used")
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Sum ta tb ->
+          let
+            extendedContext1 = (id1, (ta, Linear NotUsed)) :: outCtx
+            extendedContext2 = (id2, (tb, Linear NotUsed)) :: outCtx
+          in
+          typeInferTerm typeVarContext typeVarEnv extendedContext1 e1 |> andThen (\(t1, outCtx1) ->
+          typeInferTerm typeVarContext typeVarEnv extendedContext2 e2 |> andThen (\(t2, outCtx2) ->
+          if not (isUsed id1 outCtx1) then
+            Err ("A variável linear " ++ id1 ++ " não foi usada")
+          else if not (isUsed id2 outCtx2) then
+            Err ("A variável linear " ++ id2 ++ " não foi usada")
+          else if not (typesAreEqual t1 t2) then
+            Err ("Os tipos de ambos os ramos de uma expressão case devem ser iguais, mas o primeiro ramo é "
+              ++ "do tipo " ++ showType t1 ++ ", enquanto o segundo ramo é do tipo " ++ showType t2)
           else
-            typeInferTerm typeContext typeEnv ((id2, (b, Linear True)) :: outCtx1) e2
-              |> andThen (\(type3, outCtx3, slack3) ->
-            if (not slack3) && (isAvailable id2 outCtx3)
-            then Err ("The linear variable " ++ id2 ++ " is not used")
-            else
-              if not (typesAreEqual typeEnv type2 type3)
-              then
-                Err ("The types of both case branches should be equal, but the first branch has type "
-                  ++ typeToString type2 ++ " while the second branch has type " ++ typeToString type3)
-              else
-                let
-                  outCtx2_tail = List.drop 1 outCtx2
-                  outCtx3_tail = List.drop 1 outCtx3
-                in
-                  if contextsAreCompatible outCtx2_tail slack2 outCtx3_tail slack3
-                  then Ok (type2, contextIntersection outCtx2_tail outCtx3_tail, slack1 || (slack2 && slack3))
-                  else
-                    Err ("Some linear variable is used in one branch of the case expression, "
-                      ++ "but not in the other")))
+          let
+            outCtx1VarRemoved = List.drop 1 outCtx1
+            outCtx2VarRemoved = List.drop 1 outCtx2
+          in
+          if outCtx1VarRemoved == outCtx2VarRemoved then
+            Ok (t1, outCtx1VarRemoved)
+          else
+            Err ("Alguma variável linear está sendo usada em um dos ramos da expressão case, "
+              ++ "mas não no outro")))
         
         _ ->
-          Err ("An expression of sum type was expected, but it has type " ++ typeToString type1))
+          Err ("Uma expressão de um tipo soma era esperada, mas o tipo inferido foi " ++ showType t))
     
-    Term_Absurd aType e ->
-      checkType typeContext aType |> andThen (\_ ->
-      typeInferTerm typeContext typeEnv context e |> andThen (\(type1, outCtx, _) ->
-      case resolveTypeAlias typeEnv type1 of
-        Type_Zero ->
-          Ok (aType, outCtx, True)
+    Term_OfCourse e ->
+      typeInferTerm typeVarContext typeVarEnv (markAsUsedUnrestrictedly termVarContext) e
+        |> andThen (\(aType, _) ->
+      Ok (Type_OfCourse aType, termVarContext))
+    
+    Term_LetOfCourse id e1 e2 ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      case resolveDualLazy t1 of
+        Type_OfCourse ta ->
+          let
+            extendedContext = (id, (ta, Unrestricted)) :: outCtx1
+          in
+          typeInferTerm typeVarContext typeVarEnv extendedContext e2 |> andThen (\(t2, outCtx2) ->
+          Ok (t2, List.drop 1 outCtx2))
         
         _ ->
-          Err ("An expression of type 0 was expected, but it has type " ++ typeToString type1)))
+          Err ("Uma expressão de um tipo \"of course\" era esperada, mas o tipo inferido foi " ++ showType t1))
     
-    Term_Bang e ->
-      typeInferTerm typeContext typeEnv (markAllAsUnavailable context) e |> andThen (\(aType, _, _) ->
-      Ok (Type_OfCourse aType, context, False))
+    Term_Send e1 e2 ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      typeInferTerm typeVarContext typeVarEnv outCtx1 e2 |> andThen (\(t2, outCtx2) ->
+      case resolveDualLazy t2 of
+        Type_Send ta tb ->
+          if typesAreEqual t1 ta
+          then Ok (tb, outCtx2)
+          else
+            Err ("Uma expressão do tipo " ++ showType ta ++ " era esperada, mas o tipo inferido foi "
+              ++ showType t1)
+
+        _ -> Err ("Uma expressão de um tipo send era esperada, mas o tipo inferido foi " ++ showType t2)))
     
-    Term_BangLet id e1 e2 ->
-      typeInferTerm typeContext typeEnv context e1 |> andThen (\(type1, outCtx1, slack1) ->
-      case resolveTypeAlias typeEnv type1 of
-        Type_OfCourse a ->
-          typeInferTerm typeContext typeEnv ((id, (a, Unrestricted)) :: outCtx1) e2
-            |> andThen (\(type2, outCtx2, slack2) ->
-          Ok (type2, List.drop 1 outCtx2, slack1 || slack2))
+    Term_Receive e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Receive ta tb ->
+          Ok (Type_Product ta tb, outCtx)
+
+        _ -> Err ("Uma expressão de um tipo receive era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_SelectLeft e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Select ta tb ->
+          Ok (ta, outCtx)
+
+        _ -> Err ("Uma expressão de um tipo select era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_SelectRight e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Select ta tb ->
+          Ok (tb, outCtx)
+
+        _ -> Err ("Uma expressão de um tipo select era esperada, mas o tipo inferido foi " ++ showType t))
+
+    Term_Branch e id1 e1 id2 e2 ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Branch ta tb ->
+          let
+            extendedContext1 = (id1, (ta, Linear NotUsed)) :: outCtx
+            extendedContext2 = (id2, (tb, Linear NotUsed)) :: outCtx
+          in
+          typeInferTerm typeVarContext typeVarEnv extendedContext1 e1 |> andThen (\(t1, outCtx1) ->
+          typeInferTerm typeVarContext typeVarEnv extendedContext2 e2 |> andThen (\(t2, outCtx2) ->
+          if not (isUsed id1 outCtx1) then
+            Err ("A variável linear " ++ id1 ++ " não foi usada")
+          else if not (isUsed id2 outCtx2) then
+            Err ("A variável linear " ++ id2 ++ " não foi usada")
+          else if not (typesAreEqual t1 t2) then
+            Err ("Os tipos de ambos os ramos de uma expressão branch devem ser iguais, mas o primeiro ramo é "
+              ++ "do tipo " ++ showType t1 ++ ", enquanto o segundo ramo é do tipo " ++ showType t2)
+          else
+          let
+            outCtx1VarRemoved = List.drop 1 outCtx1
+            outCtx2VarRemoved = List.drop 1 outCtx2
+          in
+          if outCtx1VarRemoved == outCtx2VarRemoved then
+            Ok (t1, outCtx1VarRemoved)
+          else
+            Err ("Alguma variável linear está sendo usada em um dos ramos da expressão branch, "
+              ++ "mas não no outro")))
         
         _ ->
-          Err ("An expression of \"of course\" type was expected, but it has type " ++ typeToString type1))
+          Err ("Uma expressão de um tipo branch era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_Close e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_End ->
+          Ok (Type_Unit, outCtx)
+
+        _ -> Err ("Uma expressão do tipo End era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_NewAccess aType id1 id2 e ->
+      if id1 == id2 then
+        Err "Os nomes das duas variáveis introduzidas por \"new access\" não podem ser iguais"
+      else
+      checkAndApplySubs typeVarContext typeVarEnv aType |> andThen (\(t, kind) ->
+      if kind /= Kind_SessionType then
+        Err ("O tipo fornecido para a operação \"new access\" deve ser um tipo de sessão, mas o tipo fornecido "
+          ++ "foi " ++ typeToString aType ++ ", que é do kind *ns")
+      else
+      let
+        extendedContext = (id1, (Type_Accept t, Unrestricted))
+                       :: (id2, (Type_Request (Type_Dual t), Unrestricted))
+                       :: termVarContext
+      in
+      typeInferTerm typeVarContext typeVarEnv extendedContext e |> andThen (\(t1, outCtx1) ->
+      Ok (t1, List.drop 2 outCtx1)))
+    
+    Term_Accept e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Accept ta ->
+          Ok (ta, outCtx)
+
+        _ -> Err ("Uma expressão de um tipo Accept era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_Request e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Request ta ->
+          Ok (ta, outCtx)
+
+        _ -> Err ("Uma expressão de um tipo Request era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_NewSession aType ->
+      checkAndApplySubs typeVarContext typeVarEnv aType |> andThen (\(t, kind) ->
+      if kind /= Kind_SessionType then
+        Err ("O tipo fornecido para a operação \"new session\" deve ser um tipo de sessão, mas o tipo fornecido "
+          ++ "foi " ++ typeToString aType ++ ", que é do kind *ns")
+      else
+      Ok (Type_Product t (Type_Dual t), termVarContext))
+    
+    Term_Fork e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_LinearFn ta Type_Unit ->
+          checkType typeVarContext ta |> andThen (\kind ->
+          if kind /= Kind_SessionType then
+            Err ("O parâmetro da função fornecida para a operação \"fork\" deve ser de um tipo de sessão, mas "
+              ++ "o tipo inferido foi " ++ showType ta ++ ", que é do kind *ns")
+          else
+            Ok (Type_Dual ta, outCtx))
+
+        _ -> Err ("Uma expressão de um tipo da forma A -o 1, onde A é um tipo de sessão, era esperada, mas o "
+               ++ "tipo inferido foi " ++ showType t))
+    
+    Term_Spawn e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Unit ->
+          Ok (Type_Unit, outCtx)
+
+        _ -> Err ("Uma expressão do tipo 1 era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_Fold aType e ->
+      checkAndApplySubs typeVarContext typeVarEnv aType |> andThen (\(t, _) ->
+      case t of
+        Type_Rec id _ ta ->
+          typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t1, outCtx1) ->
+          let
+            unfoldedType = subs ta id t
+          in
+          if typesAreEqual t1 unfoldedType then
+            Ok (t, outCtx1)
+          else
+            Err ("Uma expressão do tipo " ++ showType unfoldedType ++ " era esperada, mas o tipo inferido foi "
+              ++ showType t1))
+        
+        _ ->
+          Err "O tipo fornecido na operação de fold deve ser um tipo recursivo")
+    
+    Term_Unfold e ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e |> andThen (\(t, outCtx) ->
+      case resolveDualLazy t of
+        Type_Rec id _ ta ->
+          let
+            unfoldedType = subs ta id t
+          in
+          Ok (unfoldedType, outCtx)
+
+        _ -> Err ("Uma expressão de um tipo recursivo era esperada, mas o tipo inferido foi " ++ showType t))
+    
+    Term_LetLin id maybeType e1 e2 ->
+      typeInferTerm typeVarContext typeVarEnv termVarContext e1 |> andThen (\(t1, outCtx1) ->
+      checkOptionalAnnotation typeVarContext typeVarEnv t1 maybeType
+        |> mapError (\e -> "Na definição de " ++ id ++ ": " ++ e)
+        |> andThen (\t ->
+      let
+        extendedContext = (id, (t, Linear NotUsed)) :: outCtx1
+      in
+      typeInferTerm typeVarContext typeVarEnv extendedContext e2 |> andThen (\(t2, outCtx2) ->
+      if isUsed id outCtx2 then
+        Ok (t2, List.drop 1 outCtx2)
+      else
+        Err ("A variável linear " ++ id ++ " não foi usada"))))
+    
+    Term_LetUn id maybeType e1 e2 ->
+      typeInferTerm typeVarContext typeVarEnv (markAsUsedUnrestrictedly termVarContext) e1
+        |> andThen (\(t1, _) ->
+      checkOptionalAnnotation typeVarContext typeVarEnv t1 maybeType
+        |> mapError (\e -> "Na definição de " ++ id ++ ": " ++ e)
+        |> andThen (\t ->
+      let
+        extendedContext = (id, (t, Unrestricted)) :: termVarContext
+      in
+      typeInferTerm typeVarContext typeVarEnv extendedContext e2 |> andThen (\(t2, outCtx2) ->
+      Ok (t2, List.drop 1 outCtx2))))
+    
+    Term_LetRec id aType e1 e2 ->
+      checkAndApplySubs typeVarContext typeVarEnv aType
+        |> mapError (\e -> "Na definição de " ++ id ++ ": " ++ e)
+        |> andThen (\(t, _) ->
+      let
+        extendedContext = (id, (t, Unrestricted)) :: termVarContext
+      in
+      typeInferTerm typeVarContext typeVarEnv (markAsUsedUnrestrictedly extendedContext) e1
+        |> andThen (\(t1, _) ->
+      if not (typesAreEqual t1 t) then
+        Err ("Na definição de " ++ id ++ ": O tipo declarado é " ++ typeToString aType ++ ", mas o tipo "
+          ++ "inferido foi " ++ showType t1)
+      else
+      typeInferTerm typeVarContext typeVarEnv extendedContext e2 |> andThen (\(t2, outCtx2) ->
+      Ok (t2, List.drop 1 outCtx2))))

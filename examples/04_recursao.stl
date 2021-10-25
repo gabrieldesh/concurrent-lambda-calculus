@@ -1,0 +1,33 @@
+typevars
+  Nat  : *ns ;
+  Bool : *ns
+end
+
+typedefs
+  Servidor = rec X : *s . ?Nat.!Bool.X ;
+  Cliente  = rec X : *s . !Nat.?Bool.X
+end
+
+vars
+  un zero    : Nat ;
+  un gt      : Nat -o Nat -o Bool ;
+  un discard : Bool -o 1
+end
+
+let rec servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    let {n, s1} = receive (unfold s0) in
+    let lin s2  = send (gt n zero) s1 in
+    servidor s2
+in
+
+let rec cliente : Cliente -o 1 =
+  \lin c0  : Cliente.
+    let lin c1  = send zero (unfold c0) in
+    let {b, c2} = receive c1            in
+    let {}      = discard b             in
+    cliente c2
+in
+
+let lin c = fork servidor in
+cliente c

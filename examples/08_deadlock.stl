@@ -1,0 +1,30 @@
+typedefs
+  Token = 1 ;
+  EnviaToken  = rec X : *s. !Token.X ;
+  RecebeToken = rec X : *s. ?Token.X
+end
+
+let rec recebe_envia : RecebeToken -o EnviaToken -o 1 =
+  \lin r0 : RecebeToken.
+  \lin e0 : EnviaToken.
+    let {t, r1} = receive (unfold r0) in
+    {- Executa alguma tarefa -}
+    let lin e1  = send t (unfold e0)  in
+    recebe_envia r1 e1
+in
+
+let rec envia_recebe : Token -o RecebeToken -o EnviaToken -o 1 =
+  \lin t0 : Token.
+  \lin r0 : RecebeToken.
+  \lin e0 : EnviaToken.
+    {- Executa alguma tarefa -}
+    let lin e1   = send t0 (unfold e0) in
+    let {t1, r1} = receive (unfold r0) in
+    envia_recebe t1 r1 e1
+in
+
+let {r0, e0} = new session [RecebeToken] in
+let lin r1   = fork (recebe_envia r0)    in
+let lin r2   = fork (recebe_envia r1)    in
+let lin r3   = fork (recebe_envia r2)    in
+recebe_envia r3 e0

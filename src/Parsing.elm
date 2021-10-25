@@ -15,7 +15,7 @@ parseProgram input =
 
 
 
--- BASIC
+-- BÁSICO
 
 token : Parser s a -> Parser s a
 token parser = 
@@ -46,7 +46,7 @@ identifier : Parser s String
 identifier = 
   token (regex "[A-Za-z_]['0-9A-Za-z_-]*") |> andThen (\id ->
   if List.member id reservedWords
-  then fail (id ++ " is a reserved word")
+  then fail (id ++ " é uma palavra reservada")
   else succeed id)
 
 typeAnnotation : Parser s Type
@@ -70,7 +70,7 @@ multiplicityTag =
     ]
 
 
--- PROGRAM
+-- PROGRAMA
 
 programParser : Parser s STLProgram
 programParser = 
@@ -105,14 +105,14 @@ typevarDeclaration =
   kindExpr |> andThen (\kind ->
   succeed (id, kind))))
 
-typedefsClause : Parser s TypeDefs
+typedefsClause : Parser s TypeVarEnv
 typedefsClause =
   token (string "typedefs") |> andThen (\_ ->
   typedefsList |> andThen (\typedefs ->
   token (string "end") |> andThen (\_ ->
   succeed typedefs)))
 
-typedefsList : Parser s TypeDefs
+typedefsList : Parser s TypeVarEnv
 typedefsList =
   sepEndBy (token (string ";")) typeDefinition
 
@@ -123,14 +123,14 @@ typeDefinition =
   typeExpr |> andThen (\aType ->
   succeed (id, aType))))
 
-varsClause : Parser s TermVarContext
+varsClause : Parser s VarDeclarations
 varsClause =
   token (string "vars") |> andThen (\_ ->
   varsList |> andThen (\context ->
   token (string "end") |> andThen (\_ ->
   succeed context)))
 
-varsList : Parser s TermVarContext
+varsList : Parser s VarDeclarations
 varsList =
   sepEndBy (token (string ";")) varDeclaration
 
@@ -144,7 +144,7 @@ varDeclaration =
 
 
 
--- TERM
+-- TERMO
 
 expression : Parser s Term
 expression =
@@ -455,7 +455,7 @@ exprBetweenParens = between (token (string "(")) (token (string ")")) (lazy (\_ 
 
 
 
--- TYPE
+-- TIPO
 
 typeExpr : Parser s Type
 typeExpr =
@@ -482,7 +482,7 @@ productChain =
 
 productTypeCons : Parser s (Type -> Type -> Type)
 productTypeCons = 
-  token (string "*") |> onsuccess (Type_SimultaneousProduct)
+  token (string "*") |> onsuccess (Type_Product)
 
 typeAtom : Parser s Type
 typeAtom =

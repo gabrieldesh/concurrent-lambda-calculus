@@ -1,0 +1,44 @@
+typevars
+  Nat  : *ns ;
+  Bool : *ns
+end
+
+typedefs
+  Servidor = &{ ?Nat.!Bool.End, ?Nat.?Nat.!Nat.End } ;
+  Cliente  = +{ !Nat.?Bool.End, !Nat.!Nat.?Nat.End }
+end
+
+vars
+  un zero : Nat ;
+  un succ : Nat -o Nat ;
+  un gt   : Nat -o Nat -o Bool ;
+  un add  : Nat -o Nat -o Nat
+end
+
+let un servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    branch s0 of
+      left s1 ->
+        let {n, s2} = receive s1          in
+        let lin s3  = send (gt n zero) s2 in
+        close s3 ;
+      
+      right s1 ->
+        let {n1, s2} = receive s1          in
+        let {n2, s3} = receive s2          in
+        let lin s4   = send (add n1 n2) s3 in
+        close s4
+in
+
+let un cliente : Cliente -o Nat =
+  \lin c0 : Cliente.
+    let lin c1  = select right c0 in
+    let lin c2  = send (succ zero) c1 in
+    let lin c3  = send (succ zero) c2 in
+    let {n, c4} = receive c3          in
+    let {}      = close c4            in
+    n
+in
+
+let lin c = fork servidor in
+cliente c

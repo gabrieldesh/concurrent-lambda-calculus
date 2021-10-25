@@ -4,10 +4,11 @@ module AbstractSyntax exposing
   , typeToString
   , Term(..)
   , Kind(..)
+  , kindToString
   , Multiplicity(..)
   , TypeVarContext
-  , TypeDefs
-  , TermVarContext
+  , TypeVarEnv
+  , VarDeclarations
   , STLProgram
   )
 
@@ -18,11 +19,12 @@ type Kind = Kind_SessionType | Kind_NonSessionType
 
 type Multiplicity = Lin | Un
 
--- TYPES
+
+
+-- TIPOS
 
 type Type
   = Type_Var Id
-  | Type_VarDual Id
   | Type_Rec Id Kind Type
   | Type_Send Type Type
   | Type_Receive Type Type
@@ -31,7 +33,7 @@ type Type
   | Type_End
   | Type_LinearFn Type Type
   | Type_UnrestrictedFn Type Type
-  | Type_SimultaneousProduct Type Type
+  | Type_Product Type Type
   | Type_Unit
   | Type_Sum Type Type
   | Type_OfCourse Type
@@ -51,9 +53,6 @@ typeToString aType =
   case aType of
     Type_Var id ->
       id
-    
-    Type_VarDual id ->
-      "dual(" ++ id ++ ")"
     
     Type_Rec id kind type1 ->
       "rec " ++ id ++ " : " ++ kindToString kind ++ " . " ++ typeToString type1
@@ -79,7 +78,7 @@ typeToString aType =
     Type_UnrestrictedFn type1 type2 ->
       "(" ++ typeToString type1 ++ ") -> (" ++ typeToString type2 ++ ")"
     
-    Type_SimultaneousProduct type1 type2 ->
+    Type_Product type1 type2 ->
       "(" ++ typeToString type1 ++ ") * (" ++ typeToString type2 ++ ")"
     
     Type_Unit ->
@@ -102,7 +101,7 @@ typeToString aType =
 
 
 
--- TERMS
+-- TERMOS
 
 type Term
   = Term_Var Id
@@ -138,17 +137,17 @@ type Term
 
 
 
--- PROGRAM
+-- PROGRAMA
 
 type alias TypeVarContext = List (Id, Kind)
 
-type alias TypeDefs = List (Id, Type)
+type alias TypeVarEnv = List (Id, Type)
 
-type alias TermVarContext = List (Id, (Multiplicity, Type))
+type alias VarDeclarations = List (Id, (Multiplicity, Type))
 
 type alias STLProgram =
   { typevars : TypeVarContext
-  , typedefs : TypeDefs
-  , vars : TermVarContext
+  , typedefs : TypeVarEnv
+  , vars : VarDeclarations
   , mainTerm : Term
   }

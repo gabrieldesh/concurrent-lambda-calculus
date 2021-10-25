@@ -1,0 +1,43 @@
+typevars
+  Nat  : *ns ;
+  Bool : *ns
+end
+
+typedefs
+  Servidor = ?Nat.!Bool.End ;
+  Cliente  = !Nat.?Bool.End
+end
+
+vars
+  un zero    : Nat ;
+  un gt      : Nat -o Nat -o Bool ;
+  un discard : Bool -o 1
+end
+
+let un servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    let {n, s1} = receive s0          in
+    let lin s2  = send (gt n zero) s1 in
+    close s2
+in
+
+let un cliente : Cliente -o 1 =
+  \lin c0 : Cliente.
+    let lin c1  = send zero c0 in
+    let {b, c2} = receive c1   in
+    let {}      = close c2     in
+    discard b
+in
+
+let rec loop_servidor : Accept Servidor -> 1 =
+  \un srvAccess : Accept Servidor.
+    let lin s = accept srvAccess   in
+    let {}    = spawn (servidor s) in
+    loop_servidor srvAccess
+in
+
+new access [Servidor] srvAccess, cltAccess   in
+let {} = spawn (loop_servidor srvAccess)     in
+let {} = spawn (cliente (request cltAccess)) in
+let {} = spawn (cliente (request cltAccess)) in
+cliente (request cltAccess)
