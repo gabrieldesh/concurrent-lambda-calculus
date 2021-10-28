@@ -1,21 +1,31 @@
-typevars
-  Nat  : *ns
-end
-
 typedefs
-  Servidor = &{ ?Nat.End, !Nat.End } ;
-  Cliente  = +{ !Nat.End, ?Nat.End }
+  Bool     = 1 + 1 ;
+
+  Servidor = &{ ?Bool.End, !Bool.End } ;
+  Cliente  = +{ !Bool.End, ?Bool.End }
 end
 
-vars
-  un zero      : Nat ;
-  un succ      : Nat -o Nat ;
-  un discard   : Nat -o 1 ;
-  un duplicate : Nat -o Nat * Nat
-end
+let un false : Bool = inl [1] {} in
+let un true  : Bool = inr [1] {} in
 
-let rec servidor : Nat -o Accept Servidor -> 1 =
-  \lin valor : Nat.
+let un discard : Bool -o 1 =
+  \lin b : Bool.
+    case b of
+      inl unit -> unit ;
+      inr unit -> unit
+in
+
+let un duplicate : Bool -o Bool * Bool =
+  \lin n : Bool.
+    case n of
+      inl unit -> {inl [1] unit, inl [1] {}} ;
+      inr unit -> {inr [1] unit, inr [1] {}}
+in
+
+-------------------------------------------------------
+
+let rec servidor : Bool -o Accept Servidor -> 1 =
+  \lin valor : Bool.
   \un srvAccess : Accept Servidor.
     let lin s0 = accept srvAccess in
     branch s0 of
@@ -34,13 +44,13 @@ in
 
 let un cliente_put : Request Cliente -> 1 =
   \un cltAccess : Request Cliente.
-    let lin c0 = request cltAccess   in
-    let lin c1 = select left c0      in
-    let lin c2 = send (succ zero) c1 in
+    let lin c0 = request cltAccess in
+    let lin c1 = select left c0    in
+    let lin c2 = send true c1      in
     close c2
 in
 
-let un cliente_get : Request Cliente -> Nat =
+let un cliente_get : Request Cliente -> Bool =
   \un cltAccess : Request Cliente.
     let lin c0  = request cltAccess in
     let lin c1  = select right c0   in
@@ -50,6 +60,6 @@ let un cliente_get : Request Cliente -> Nat =
 in
 
 new access [Servidor] srvAccess, cltAccess in
-let {} = spawn (servidor zero srvAccess)   in
+let {} = spawn (servidor false srvAccess)  in
 let {} = spawn (cliente_put cltAccess)     in
 cliente_get cltAccess

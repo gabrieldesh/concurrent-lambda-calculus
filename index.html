@@ -4549,6 +4549,89 @@ function _File_toUrl(blob)
 
 
 
+
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
+
+
+
+function _Time_now(millisToPosix)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(millisToPosix(Date.now())));
+	});
+}
+
+var _Time_setInterval = F2(function(interval, task)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		var id = setInterval(function() { _Scheduler_rawSpawn(task); }, interval);
+		return function() { clearInterval(id); };
+	});
+});
+
+function _Time_here()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(
+			A2($elm$time$Time$customZone, -(new Date().getTimezoneOffset()), _List_Nil)
+		));
+	});
+}
+
+
+function _Time_getZoneName()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		try
+		{
+			var name = $elm$time$Time$Name(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		}
+		catch (e)
+		{
+			var name = $elm$time$Time$Offset(new Date().getTimezoneOffset());
+		}
+		callback(_Scheduler_succeed(name));
+	});
+}
+
+
 // CREATE
 
 var _Regex_never = /.^/;
@@ -5437,11 +5520,17 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$document = _Browser_document;
+var $author$project$Main$SyntaxError = function (a) {
+	return {$: 'SyntaxError', a: a};
+};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{code: ''},
+		{
+			code: '',
+			state: $author$project$Main$SyntaxError('')
+		},
 		$elm$core$Platform$Cmd$none);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -5452,9 +5541,23 @@ var $author$project$Main$subscriptions = function (_v0) {
 var $author$project$Main$ChangeCode = function (a) {
 	return {$: 'ChangeCode', a: a};
 };
+var $author$project$Main$EvalStep = {$: 'EvalStep'};
+var $author$project$Main$Evaluation = F5(
+	function (a, b, c, d, e) {
+		return {$: 'Evaluation', a: a, b: b, c: c, d: d, e: e};
+	});
 var $author$project$Main$GotFile = function (a) {
 	return {$: 'GotFile', a: a};
 };
+var $author$project$Evaluation$Running = {$: 'Running'};
+var $author$project$Evaluation$Stopped = {$: 'Stopped'};
+var $author$project$Main$TypeError = function (a) {
+	return {$: 'TypeError', a: a};
+};
+var $author$project$Main$WaitingSeed = F3(
+	function (a, b, c) {
+		return {$: 'WaitingSeed', a: a, b: b, c: c};
+	});
 var $elm$time$Time$Posix = function (a) {
 	return {$: 'Posix', a: a};
 };
@@ -5466,143 +5569,78 @@ var $elm$file$File$Select$file = F2(
 			toMsg,
 			_File_uploadOne(mimes));
 	});
-var $elm$file$File$Download$string = F3(
-	function (name, mime, content) {
-		return A2(
-			$elm$core$Task$perform,
-			$elm$core$Basics$never,
-			A3(_File_download, name, mime, content));
-	});
-var $elm$file$File$toString = _File_toString;
-var $author$project$Main$update = F2(
-	function (msg, model) {
-		switch (msg.$) {
-			case 'ChangeCode':
-				var newCode = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{code: newCode}),
-					$elm$core$Platform$Cmd$none);
-			case 'LoadFile':
-				return _Utils_Tuple2(
-					model,
-					A2($elm$file$File$Select$file, _List_Nil, $author$project$Main$GotFile));
-			case 'SaveFile':
-				return _Utils_Tuple2(
-					model,
-					A3($elm$file$File$Download$string, 'programa.stl', 'text/plain', model.code));
-			default:
-				var file = msg.a;
-				return _Utils_Tuple2(
-					model,
-					A2(
-						$elm$core$Task$perform,
-						$author$project$Main$ChangeCode,
-						$elm$file$File$toString(file)));
-		}
-	});
-var $author$project$Main$LoadFile = {$: 'LoadFile'};
-var $author$project$Main$SaveFile = {$: 'SaveFile'};
-var $elm$json$Json$Encode$bool = _Json_wrap;
-var $elm$html$Html$Attributes$boolProperty = F2(
-	function (key, bool) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$bool(bool));
-	});
-var $elm$html$Html$Attributes$autofocus = $elm$html$Html$Attributes$boolProperty('autofocus');
-var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$html$Html$Attributes$cols = function (n) {
+var $elm$core$Process$sleep = _Process_sleep;
+var $author$project$Main$fireMsg = function (msg) {
 	return A2(
-		_VirtualDom_attribute,
-		'cols',
-		$elm$core$String$fromInt(n));
+		$elm$core$Task$perform,
+		function (_v0) {
+			return msg;
+		},
+		$elm$core$Process$sleep(0));
 };
-var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$html$Html$h1 = _VirtualDom_node('h1');
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
+var $author$project$Main$GotSeed = function (a) {
+	return {$: 'GotSeed', a: a};
 };
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
-var $elm$html$Html$Events$alwaysStop = function (x) {
-	return _Utils_Tuple2(x, true);
-};
-var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
-	return {$: 'MayStopPropagation', a: a};
-};
-var $elm$html$Html$Events$stopPropagationOn = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
-	});
-var $elm$json$Json$Decode$field = _Json_decodeField;
-var $elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
-	});
-var $elm$json$Json$Decode$string = _Json_decodeString;
-var $elm$html$Html$Events$targetValue = A2(
-	$elm$json$Json$Decode$at,
-	_List_fromArray(
-		['target', 'value']),
-	$elm$json$Json$Decode$string);
-var $elm$html$Html$Events$onInput = function (tagger) {
-	return A2(
-		$elm$html$Html$Events$stopPropagationOn,
-		'input',
-		A2(
-			$elm$json$Json$Decode$map,
-			$elm$html$Html$Events$alwaysStop,
-			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
-};
-var $elm$html$Html$Attributes$rows = function (n) {
-	return A2(
-		_VirtualDom_attribute,
-		'rows',
-		$elm$core$String$fromInt(n));
-};
-var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $elm$html$Html$textarea = _VirtualDom_node('textarea');
-var $elm$json$Json$Encode$string = _Json_wrap;
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
-var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $author$project$Main$EvaluationError = F2(
+var $elm$random$Random$Seed = F2(
 	function (a, b) {
-		return {$: 'EvaluationError', a: a, b: b};
+		return {$: 'Seed', a: a, b: b};
 	});
-var $author$project$Main$SyntaxError = function (a) {
-	return {$: 'SyntaxError', a: a};
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$random$Random$next = function (_v0) {
+	var state0 = _v0.a;
+	var incr = _v0.b;
+	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
 };
-var $author$project$Main$TypeError = F2(
+var $elm$random$Random$initialSeed = function (x) {
+	var _v0 = $elm$random$Random$next(
+		A2($elm$random$Random$Seed, 0, 1013904223));
+	var state1 = _v0.a;
+	var incr = _v0.b;
+	var state2 = (state1 + x) >>> 0;
+	return $elm$random$Random$next(
+		A2($elm$random$Random$Seed, state2, incr));
+};
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
 	function (a, b) {
-		return {$: 'TypeError', a: a, b: b};
+		return {$: 'Zone', a: a, b: b};
 	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $author$project$Main$getSeedFromTime = A2(
+	$elm$core$Task$perform,
+	function (p) {
+		return $author$project$Main$GotSeed(
+			$elm$random$Random$initialSeed(
+				$elm$time$Time$posixToMillis(p)));
+	},
+	$elm$time$Time$now);
+var $author$project$Evaluation$EC_Empty = {$: 'EC_Empty'};
+var $author$project$Evaluation$Main = {$: 'Main'};
+var $author$project$Evaluation$Thread = F4(
+	function (a, b, c, d) {
+		return {$: 'Thread', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$initialConfig = function (term) {
+	return {
+		channels: _List_Nil,
+		nextChannelId: 0,
+		returnValue: $elm$core$Maybe$Nothing,
+		threads: _List_fromArray(
+			[
+				A4($author$project$Evaluation$Thread, $author$project$Evaluation$Main, $author$project$Evaluation$EC_Empty, term, _List_Nil)
+			])
+	};
+};
 var $andre_dietrich$parser_combinators$Combine$app = function (_v0) {
 	var inner = _v0.a;
 	return inner;
@@ -8054,23 +8092,358 @@ var $author$project$Parsing$parseProgram = function (input) {
 		return $elm$core$Result$Err(errors);
 	}
 };
-var $elm$core$Result$andThen = F2(
-	function (callback, result) {
-		if (result.$ === 'Ok') {
-			var value = result.a;
-			return callback(value);
+var $author$project$Evaluation$Error = {$: 'Error'};
+var $author$project$Evaluation$Finished = {$: 'Finished'};
+var $author$project$Evaluation$Lock = {$: 'Lock'};
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
 		} else {
-			var msg = result.a;
-			return $elm$core$Result$Err(msg);
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
 		}
 	});
-var $author$project$AbstractSyntax$kindToString = function (kind) {
-	if (kind.$ === 'Kind_SessionType') {
-		return '*s';
+var $elm$random$Random$Generator = function (a) {
+	return {$: 'Generator', a: a};
+};
+var $elm$random$Random$constant = function (value) {
+	return $elm$random$Random$Generator(
+		function (seed) {
+			return _Utils_Tuple2(value, seed);
+		});
+};
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
 	} else {
-		return '*ns';
+		return $elm$core$Maybe$Nothing;
 	}
 };
+var $elm_community$random_extra$Random$List$get = F2(
+	function (index, list) {
+		return $elm$core$List$head(
+			A2($elm$core$List$drop, index, list));
+	});
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$core$Bitwise$xor = _Bitwise_xor;
+var $elm$random$Random$peel = function (_v0) {
+	var state = _v0.a;
+	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
+	return ((word >>> 22) ^ word) >>> 0;
+};
+var $elm$random$Random$int = F2(
+	function (a, b) {
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v0 = (_Utils_cmp(a, b) < 0) ? _Utils_Tuple2(a, b) : _Utils_Tuple2(b, a);
+				var lo = _v0.a;
+				var hi = _v0.b;
+				var range = (hi - lo) + 1;
+				if (!((range - 1) & range)) {
+					return _Utils_Tuple2(
+						(((range - 1) & $elm$random$Random$peel(seed0)) >>> 0) + lo,
+						$elm$random$Random$next(seed0));
+				} else {
+					var threshhold = (((-range) >>> 0) % range) >>> 0;
+					var accountForBias = function (seed) {
+						accountForBias:
+						while (true) {
+							var x = $elm$random$Random$peel(seed);
+							var seedN = $elm$random$Random$next(seed);
+							if (_Utils_cmp(x, threshhold) < 0) {
+								var $temp$seed = seedN;
+								seed = $temp$seed;
+								continue accountForBias;
+							} else {
+								return _Utils_Tuple2((x % range) + lo, seedN);
+							}
+						}
+					};
+					return accountForBias(seed0);
+				}
+			});
+	});
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$random$Random$map = F2(
+	function (func, _v0) {
+		var genA = _v0.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v1 = genA(seed0);
+				var a = _v1.a;
+				var seed1 = _v1.b;
+				return _Utils_Tuple2(
+					func(a),
+					seed1);
+			});
+	});
+var $elm$core$List$takeReverse = F3(
+	function (n, list, kept) {
+		takeReverse:
+		while (true) {
+			if (n <= 0) {
+				return kept;
+			} else {
+				if (!list.b) {
+					return kept;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs,
+						$temp$kept = A2($elm$core$List$cons, x, kept);
+					n = $temp$n;
+					list = $temp$list;
+					kept = $temp$kept;
+					continue takeReverse;
+				}
+			}
+		}
+	});
+var $elm$core$List$takeTailRec = F2(
+	function (n, list) {
+		return $elm$core$List$reverse(
+			A3($elm$core$List$takeReverse, n, list, _List_Nil));
+	});
+var $elm$core$List$takeFast = F3(
+	function (ctr, n, list) {
+		if (n <= 0) {
+			return _List_Nil;
+		} else {
+			var _v0 = _Utils_Tuple2(n, list);
+			_v0$1:
+			while (true) {
+				_v0$5:
+				while (true) {
+					if (!_v0.b.b) {
+						return list;
+					} else {
+						if (_v0.b.b.b) {
+							switch (_v0.a) {
+								case 1:
+									break _v0$1;
+								case 2:
+									var _v2 = _v0.b;
+									var x = _v2.a;
+									var _v3 = _v2.b;
+									var y = _v3.a;
+									return _List_fromArray(
+										[x, y]);
+								case 3:
+									if (_v0.b.b.b.b) {
+										var _v4 = _v0.b;
+										var x = _v4.a;
+										var _v5 = _v4.b;
+										var y = _v5.a;
+										var _v6 = _v5.b;
+										var z = _v6.a;
+										return _List_fromArray(
+											[x, y, z]);
+									} else {
+										break _v0$5;
+									}
+								default:
+									if (_v0.b.b.b.b && _v0.b.b.b.b.b) {
+										var _v7 = _v0.b;
+										var x = _v7.a;
+										var _v8 = _v7.b;
+										var y = _v8.a;
+										var _v9 = _v8.b;
+										var z = _v9.a;
+										var _v10 = _v9.b;
+										var w = _v10.a;
+										var tl = _v10.b;
+										return (ctr > 1000) ? A2(
+											$elm$core$List$cons,
+											x,
+											A2(
+												$elm$core$List$cons,
+												y,
+												A2(
+													$elm$core$List$cons,
+													z,
+													A2(
+														$elm$core$List$cons,
+														w,
+														A2($elm$core$List$takeTailRec, n - 4, tl))))) : A2(
+											$elm$core$List$cons,
+											x,
+											A2(
+												$elm$core$List$cons,
+												y,
+												A2(
+													$elm$core$List$cons,
+													z,
+													A2(
+														$elm$core$List$cons,
+														w,
+														A3($elm$core$List$takeFast, ctr + 1, n - 4, tl)))));
+									} else {
+										break _v0$5;
+									}
+							}
+						} else {
+							if (_v0.a === 1) {
+								break _v0$1;
+							} else {
+								break _v0$5;
+							}
+						}
+					}
+				}
+				return list;
+			}
+			var _v1 = _v0.b;
+			var x = _v1.a;
+			return _List_fromArray(
+				[x]);
+		}
+	});
+var $elm$core$List$take = F2(
+	function (n, list) {
+		return A3($elm$core$List$takeFast, 0, n, list);
+	});
+var $elm_community$random_extra$Random$List$choose = function (list) {
+	if ($elm$core$List$isEmpty(list)) {
+		return $elm$random$Random$constant(
+			_Utils_Tuple2($elm$core$Maybe$Nothing, list));
+	} else {
+		var lastIndex = $elm$core$List$length(list) - 1;
+		var gen = A2($elm$random$Random$int, 0, lastIndex);
+		var front = function (i) {
+			return A2($elm$core$List$take, i, list);
+		};
+		var back = function (i) {
+			return A2($elm$core$List$drop, i + 1, list);
+		};
+		return A2(
+			$elm$random$Random$map,
+			function (index) {
+				return _Utils_Tuple2(
+					A2($elm_community$random_extra$Random$List$get, index, list),
+					A2(
+						$elm$core$List$append,
+						front(index),
+						back(index)));
+			},
+			gen);
+	}
+};
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$Basics$not = _Basics_not;
+var $elm$core$List$all = F2(
+	function (isOkay, list) {
+		return !A2(
+			$elm$core$List$any,
+			A2($elm$core$Basics$composeL, $elm$core$Basics$not, isOkay),
+			list);
+	});
+var $author$project$Evaluation$noThreadsAreBlocked = function (channels) {
+	return A2(
+		$elm$core$List$all,
+		function (_v0) {
+			var queue = _v0.b;
+			return $elm$core$List$isEmpty(queue);
+		},
+		channels);
+};
+var $author$project$Evaluation$Child = {$: 'Child'};
+var $author$project$Evaluation$ClosureEntry = F2(
+	function (a, b) {
+		return {$: 'ClosureEntry', a: a, b: b};
+	});
+var $author$project$Evaluation$FocusedThread = F3(
+	function (a, b, c) {
+		return {$: 'FocusedThread', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$Pot_Accept = function (a) {
+	return {$: 'Pot_Accept', a: a};
+};
+var $author$project$Evaluation$Pot_Branch = F6(
+	function (a, b, c, d, e, f) {
+		return {$: 'Pot_Branch', a: a, b: b, c: c, d: d, e: e, f: f};
+	});
+var $author$project$Evaluation$Pot_Close = function (a) {
+	return {$: 'Pot_Close', a: a};
+};
+var $author$project$Evaluation$Pot_Receive = function (a) {
+	return {$: 'Pot_Receive', a: a};
+};
+var $author$project$Evaluation$Pot_Request = function (a) {
+	return {$: 'Pot_Request', a: a};
+};
+var $author$project$Evaluation$Pot_SelectLeft = function (a) {
+	return {$: 'Pot_SelectLeft', a: a};
+};
+var $author$project$Evaluation$Pot_SelectRight = function (a) {
+	return {$: 'Pot_SelectRight', a: a};
+};
+var $author$project$Evaluation$Pot_Send = F2(
+	function (a, b) {
+		return {$: 'Pot_Send', a: a, b: b};
+	});
+var $author$project$Evaluation$ValueEntry = function (a) {
+	return {$: 'ValueEntry', a: a};
+};
+var $author$project$Evaluation$Value_ChannelName = function (a) {
+	return {$: 'Value_ChannelName', a: a};
+};
+var $author$project$Evaluation$Value_Pair = F2(
+	function (a, b) {
+		return {$: 'Value_Pair', a: a, b: b};
+	});
+var $author$project$Evaluation$Value_Unit = {$: 'Value_Unit'};
+var $author$project$Utils$delete = F2(
+	function (searchKey, list) {
+		if (!list.b) {
+			return _List_Nil;
+		} else {
+			var _v1 = list.a;
+			var key = _v1.a;
+			var value = _v1.b;
+			var xs = list.b;
+			return _Utils_eq(key, searchKey) ? xs : A2(
+				$elm$core$List$cons,
+				_Utils_Tuple2(key, value),
+				A2($author$project$Utils$delete, searchKey, xs));
+		}
+	});
 var $author$project$Utils$lookup = F2(
 	function (searchKey, list) {
 		lookup:
@@ -8094,6 +8467,1786 @@ var $author$project$Utils$lookup = F2(
 			}
 		}
 	});
+var $author$project$Evaluation$EC_Accept = function (a) {
+	return {$: 'EC_Accept', a: a};
+};
+var $author$project$Evaluation$EC_App_Left = F3(
+	function (a, b, c) {
+		return {$: 'EC_App_Left', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$EC_Branch = F6(
+	function (a, b, c, d, e, f) {
+		return {$: 'EC_Branch', a: a, b: b, c: c, d: d, e: e, f: f};
+	});
+var $author$project$Evaluation$EC_Case = F6(
+	function (a, b, c, d, e, f) {
+		return {$: 'EC_Case', a: a, b: b, c: c, d: d, e: e, f: f};
+	});
+var $author$project$Evaluation$EC_Close = function (a) {
+	return {$: 'EC_Close', a: a};
+};
+var $author$project$Evaluation$EC_Fold = function (a) {
+	return {$: 'EC_Fold', a: a};
+};
+var $author$project$Evaluation$EC_Fork = function (a) {
+	return {$: 'EC_Fork', a: a};
+};
+var $author$project$Evaluation$EC_Inl = function (a) {
+	return {$: 'EC_Inl', a: a};
+};
+var $author$project$Evaluation$EC_Inr = function (a) {
+	return {$: 'EC_Inr', a: a};
+};
+var $author$project$Evaluation$EC_LetLin = F4(
+	function (a, b, c, d) {
+		return {$: 'EC_LetLin', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$EC_LetOfCourse = F4(
+	function (a, b, c, d) {
+		return {$: 'EC_LetOfCourse', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$EC_LetPair = F5(
+	function (a, b, c, d, e) {
+		return {$: 'EC_LetPair', a: a, b: b, c: c, d: d, e: e};
+	});
+var $author$project$Evaluation$EC_LetUnit = F3(
+	function (a, b, c) {
+		return {$: 'EC_LetUnit', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$EC_LinApp_Right = F2(
+	function (a, b) {
+		return {$: 'EC_LinApp_Right', a: a, b: b};
+	});
+var $author$project$Evaluation$EC_Pair_Left = F3(
+	function (a, b, c) {
+		return {$: 'EC_Pair_Left', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$EC_Pair_Right = F2(
+	function (a, b) {
+		return {$: 'EC_Pair_Right', a: a, b: b};
+	});
+var $author$project$Evaluation$EC_Receive = function (a) {
+	return {$: 'EC_Receive', a: a};
+};
+var $author$project$Evaluation$EC_Request = function (a) {
+	return {$: 'EC_Request', a: a};
+};
+var $author$project$Evaluation$EC_SelectLeft = function (a) {
+	return {$: 'EC_SelectLeft', a: a};
+};
+var $author$project$Evaluation$EC_SelectRight = function (a) {
+	return {$: 'EC_SelectRight', a: a};
+};
+var $author$project$Evaluation$EC_Send_Left = F3(
+	function (a, b, c) {
+		return {$: 'EC_Send_Left', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$EC_Send_Right = F2(
+	function (a, b) {
+		return {$: 'EC_Send_Right', a: a, b: b};
+	});
+var $author$project$Evaluation$EC_Unfold = function (a) {
+	return {$: 'EC_Unfold', a: a};
+};
+var $author$project$Evaluation$Focus = F2(
+	function (a, b) {
+		return {$: 'Focus', a: a, b: b};
+	});
+var $author$project$Evaluation$Pot_Case = F6(
+	function (a, b, c, d, e, f) {
+		return {$: 'Pot_Case', a: a, b: b, c: c, d: d, e: e, f: f};
+	});
+var $author$project$Evaluation$Pot_Fork = function (a) {
+	return {$: 'Pot_Fork', a: a};
+};
+var $author$project$Evaluation$Pot_LetLin = F4(
+	function (a, b, c, d) {
+		return {$: 'Pot_LetLin', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$Pot_LetOfCourse = F4(
+	function (a, b, c, d) {
+		return {$: 'Pot_LetOfCourse', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$Pot_LetPair = F5(
+	function (a, b, c, d, e) {
+		return {$: 'Pot_LetPair', a: a, b: b, c: c, d: d, e: e};
+	});
+var $author$project$Evaluation$Pot_LetRec = F4(
+	function (a, b, c, d) {
+		return {$: 'Pot_LetRec', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$Pot_LetUn = F4(
+	function (a, b, c, d) {
+		return {$: 'Pot_LetUn', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$Pot_LetUnit = F3(
+	function (a, b, c) {
+		return {$: 'Pot_LetUnit', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$Pot_LinApp = F2(
+	function (a, b) {
+		return {$: 'Pot_LinApp', a: a, b: b};
+	});
+var $author$project$Evaluation$Pot_NewAccess = F4(
+	function (a, b, c, d) {
+		return {$: 'Pot_NewAccess', a: a, b: b, c: c, d: d};
+	});
+var $author$project$Evaluation$Pot_NewSession = {$: 'Pot_NewSession'};
+var $author$project$Evaluation$Pot_Spawn = F2(
+	function (a, b) {
+		return {$: 'Pot_Spawn', a: a, b: b};
+	});
+var $author$project$Evaluation$Pot_UnApp = F3(
+	function (a, b, c) {
+		return {$: 'Pot_UnApp', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$Pot_Unfold = function (a) {
+	return {$: 'Pot_Unfold', a: a};
+};
+var $author$project$Evaluation$Pot_Var = function (a) {
+	return {$: 'Pot_Var', a: a};
+};
+var $author$project$Evaluation$Val = function (a) {
+	return {$: 'Val', a: a};
+};
+var $author$project$Evaluation$Value_Fold = function (a) {
+	return {$: 'Value_Fold', a: a};
+};
+var $author$project$Evaluation$Value_Inl = function (a) {
+	return {$: 'Value_Inl', a: a};
+};
+var $author$project$Evaluation$Value_Inr = function (a) {
+	return {$: 'Value_Inr', a: a};
+};
+var $author$project$Evaluation$Value_LinearFn = F3(
+	function (a, b, c) {
+		return {$: 'Value_LinearFn', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$Value_OfCourse = F2(
+	function (a, b) {
+		return {$: 'Value_OfCourse', a: a, b: b};
+	});
+var $author$project$Evaluation$Value_UnrestrictedFn = F3(
+	function (a, b, c) {
+		return {$: 'Value_UnrestrictedFn', a: a, b: b, c: c};
+	});
+var $author$project$Evaluation$refocus = F3(
+	function (term, env, ec) {
+		refocus:
+		while (true) {
+			switch (term.$) {
+				case 'Term_Var':
+					var id = term.a;
+					var _v3 = A2($author$project$Utils$lookup, id, env);
+					if (_v3.$ === 'Just') {
+						if (_v3.a.$ === 'ValueEntry') {
+							var v = _v3.a.a;
+							return A2($author$project$Evaluation$refocusAux, ec, v);
+						} else {
+							var _v4 = _v3.a;
+							var e = _v4.a;
+							var env1 = _v4.b;
+							var $temp$term = e,
+								$temp$env = env1,
+								$temp$ec = ec;
+							term = $temp$term;
+							env = $temp$env;
+							ec = $temp$ec;
+							continue refocus;
+						}
+					} else {
+						return A2(
+							$author$project$Evaluation$Focus,
+							ec,
+							$author$project$Evaluation$Pot_Var(id));
+					}
+				case 'Term_LinearLambda':
+					var id = term.a;
+					var e = term.c;
+					return A2(
+						$author$project$Evaluation$refocusAux,
+						ec,
+						A3($author$project$Evaluation$Value_LinearFn, id, e, env));
+				case 'Term_UnrestrictedLambda':
+					var id = term.a;
+					var e = term.c;
+					return A2(
+						$author$project$Evaluation$refocusAux,
+						ec,
+						A3($author$project$Evaluation$Value_UnrestrictedFn, id, e, env));
+				case 'Term_Application':
+					var e1 = term.a;
+					var e2 = term.b;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A3($author$project$Evaluation$EC_App_Left, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Pair':
+					var e1 = term.a;
+					var e2 = term.b;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A3($author$project$Evaluation$EC_Pair_Left, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_LetPair':
+					var id1 = term.a;
+					var id2 = term.b;
+					var e1 = term.c;
+					var e2 = term.d;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A5($author$project$Evaluation$EC_LetPair, id1, id2, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Unit':
+					return A2($author$project$Evaluation$refocusAux, ec, $author$project$Evaluation$Value_Unit);
+				case 'Term_LetUnit':
+					var e1 = term.a;
+					var e2 = term.b;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A3($author$project$Evaluation$EC_LetUnit, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Inl':
+					var e = term.b;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Inl(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Inr':
+					var e = term.b;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Inr(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Case':
+					var e = term.a;
+					var id1 = term.b;
+					var e1 = term.c;
+					var id2 = term.d;
+					var e2 = term.e;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = A6($author$project$Evaluation$EC_Case, id1, e1, id2, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_OfCourse':
+					var e = term.a;
+					return A2(
+						$author$project$Evaluation$refocusAux,
+						ec,
+						A2($author$project$Evaluation$Value_OfCourse, e, env));
+				case 'Term_LetOfCourse':
+					var id = term.a;
+					var e1 = term.b;
+					var e2 = term.c;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A4($author$project$Evaluation$EC_LetOfCourse, id, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Send':
+					var e1 = term.a;
+					var e2 = term.b;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A3($author$project$Evaluation$EC_Send_Left, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Receive':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Receive(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_SelectLeft':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_SelectLeft(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_SelectRight':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_SelectRight(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Branch':
+					var e = term.a;
+					var id1 = term.b;
+					var e1 = term.c;
+					var id2 = term.d;
+					var e2 = term.e;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = A6($author$project$Evaluation$EC_Branch, id1, e1, id2, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Close':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Close(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_NewAccess':
+					var id1 = term.b;
+					var id2 = term.c;
+					var e = term.d;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A4($author$project$Evaluation$Pot_NewAccess, id1, id2, e, env));
+				case 'Term_Accept':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Accept(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Request':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Request(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_NewSession':
+					return A2($author$project$Evaluation$Focus, ec, $author$project$Evaluation$Pot_NewSession);
+				case 'Term_Fork':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Fork(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Spawn':
+					var e = term.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A2($author$project$Evaluation$Pot_Spawn, e, env));
+				case 'Term_Fold':
+					var e = term.b;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Fold(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_Unfold':
+					var e = term.a;
+					var $temp$term = e,
+						$temp$env = env,
+						$temp$ec = $author$project$Evaluation$EC_Unfold(ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_LetLin':
+					var id = term.a;
+					var e1 = term.c;
+					var e2 = term.d;
+					var $temp$term = e1,
+						$temp$env = env,
+						$temp$ec = A4($author$project$Evaluation$EC_LetLin, id, e2, env, ec);
+					term = $temp$term;
+					env = $temp$env;
+					ec = $temp$ec;
+					continue refocus;
+				case 'Term_LetUn':
+					var id = term.a;
+					var e1 = term.c;
+					var e2 = term.d;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A4($author$project$Evaluation$Pot_LetUn, id, e1, e2, env));
+				default:
+					var id = term.a;
+					var e1 = term.c;
+					var e2 = term.d;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A4($author$project$Evaluation$Pot_LetRec, id, e1, e2, env));
+			}
+		}
+	});
+var $author$project$Evaluation$refocusAux = F2(
+	function (evalCtx, v) {
+		refocusAux:
+		while (true) {
+			switch (evalCtx.$) {
+				case 'EC_Empty':
+					return $author$project$Evaluation$Val(v);
+				case 'EC_App_Left':
+					var e2 = evalCtx.a;
+					var env = evalCtx.b;
+					var ec = evalCtx.c;
+					if (v.$ === 'Value_LinearFn') {
+						return A3(
+							$author$project$Evaluation$refocus,
+							e2,
+							env,
+							A2($author$project$Evaluation$EC_LinApp_Right, v, ec));
+					} else {
+						return A2(
+							$author$project$Evaluation$Focus,
+							ec,
+							A3($author$project$Evaluation$Pot_UnApp, v, e2, env));
+					}
+				case 'EC_LinApp_Right':
+					var v1 = evalCtx.a;
+					var ec = evalCtx.b;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A2($author$project$Evaluation$Pot_LinApp, v1, v));
+				case 'EC_Pair_Left':
+					var e2 = evalCtx.a;
+					var env = evalCtx.b;
+					var ec = evalCtx.c;
+					return A3(
+						$author$project$Evaluation$refocus,
+						e2,
+						env,
+						A2($author$project$Evaluation$EC_Pair_Right, v, ec));
+				case 'EC_Pair_Right':
+					var v1 = evalCtx.a;
+					var ec = evalCtx.b;
+					var $temp$evalCtx = ec,
+						$temp$v = A2($author$project$Evaluation$Value_Pair, v1, v);
+					evalCtx = $temp$evalCtx;
+					v = $temp$v;
+					continue refocusAux;
+				case 'EC_LetPair':
+					var id1 = evalCtx.a;
+					var id2 = evalCtx.b;
+					var e2 = evalCtx.c;
+					var env = evalCtx.d;
+					var ec = evalCtx.e;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A5($author$project$Evaluation$Pot_LetPair, id1, id2, v, e2, env));
+				case 'EC_LetUnit':
+					var e2 = evalCtx.a;
+					var env = evalCtx.b;
+					var ec = evalCtx.c;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A3($author$project$Evaluation$Pot_LetUnit, v, e2, env));
+				case 'EC_Inl':
+					var ec = evalCtx.a;
+					var $temp$evalCtx = ec,
+						$temp$v = $author$project$Evaluation$Value_Inl(v);
+					evalCtx = $temp$evalCtx;
+					v = $temp$v;
+					continue refocusAux;
+				case 'EC_Inr':
+					var ec = evalCtx.a;
+					var $temp$evalCtx = ec,
+						$temp$v = $author$project$Evaluation$Value_Inr(v);
+					evalCtx = $temp$evalCtx;
+					v = $temp$v;
+					continue refocusAux;
+				case 'EC_Case':
+					var id1 = evalCtx.a;
+					var e1 = evalCtx.b;
+					var id2 = evalCtx.c;
+					var e2 = evalCtx.d;
+					var env = evalCtx.e;
+					var ec = evalCtx.f;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A6($author$project$Evaluation$Pot_Case, v, id1, e1, id2, e2, env));
+				case 'EC_LetOfCourse':
+					var id = evalCtx.a;
+					var e2 = evalCtx.b;
+					var env = evalCtx.c;
+					var ec = evalCtx.d;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A4($author$project$Evaluation$Pot_LetOfCourse, id, v, e2, env));
+				case 'EC_Send_Left':
+					var e2 = evalCtx.a;
+					var env = evalCtx.b;
+					var ec = evalCtx.c;
+					return A3(
+						$author$project$Evaluation$refocus,
+						e2,
+						env,
+						A2($author$project$Evaluation$EC_Send_Right, v, ec));
+				case 'EC_Send_Right':
+					var v1 = evalCtx.a;
+					var ec = evalCtx.b;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A2($author$project$Evaluation$Pot_Send, v1, v));
+				case 'EC_Receive':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_Receive(v));
+				case 'EC_SelectLeft':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_SelectLeft(v));
+				case 'EC_SelectRight':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_SelectRight(v));
+				case 'EC_Branch':
+					var id1 = evalCtx.a;
+					var e1 = evalCtx.b;
+					var id2 = evalCtx.c;
+					var e2 = evalCtx.d;
+					var env = evalCtx.e;
+					var ec = evalCtx.f;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A6($author$project$Evaluation$Pot_Branch, v, id1, e1, id2, e2, env));
+				case 'EC_Close':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_Close(v));
+				case 'EC_Accept':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_Accept(v));
+				case 'EC_Request':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_Request(v));
+				case 'EC_Fork':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_Fork(v));
+				case 'EC_Fold':
+					var ec = evalCtx.a;
+					var $temp$evalCtx = ec,
+						$temp$v = $author$project$Evaluation$Value_Fold(v);
+					evalCtx = $temp$evalCtx;
+					v = $temp$v;
+					continue refocusAux;
+				case 'EC_Unfold':
+					var ec = evalCtx.a;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						$author$project$Evaluation$Pot_Unfold(v));
+				default:
+					var id = evalCtx.a;
+					var e2 = evalCtx.b;
+					var env = evalCtx.c;
+					var ec = evalCtx.d;
+					return A2(
+						$author$project$Evaluation$Focus,
+						ec,
+						A4($author$project$Evaluation$Pot_LetLin, id, v, e2, env));
+			}
+		}
+	});
+var $author$project$Utils$update = F3(
+	function (searchKey, newValue, list) {
+		if (!list.b) {
+			return _List_Nil;
+		} else {
+			var _v1 = list.a;
+			var key = _v1.a;
+			var value = _v1.b;
+			var xs = list.b;
+			return _Utils_eq(key, searchKey) ? A2(
+				$elm$core$List$cons,
+				_Utils_Tuple2(key, newValue),
+				xs) : A2(
+				$elm$core$List$cons,
+				_Utils_Tuple2(key, value),
+				A3($author$project$Utils$update, searchKey, newValue, xs));
+		}
+	});
+var $author$project$Evaluation$reduce = F2(
+	function (_v0, config) {
+		var flag = _v0.a;
+		var evalCtx = _v0.b;
+		var term = _v0.c;
+		var environment = _v0.d;
+		var _v1 = A3($author$project$Evaluation$refocus, term, environment, evalCtx);
+		if (_v1.$ === 'Val') {
+			var v = _v1.a;
+			if (flag.$ === 'Main') {
+				return $elm$core$Result$Ok(
+					_Utils_update(
+						config,
+						{
+							returnValue: $elm$core$Maybe$Just(v)
+						}));
+			} else {
+				return $elm$core$Result$Ok(config);
+			}
+		} else {
+			var ec = _v1.a;
+			var potRed = _v1.b;
+			_v3$25:
+			while (true) {
+				switch (potRed.$) {
+					case 'Pot_Var':
+						return $elm$core$Result$Err(_Utils_Tuple0);
+					case 'Pot_LinApp':
+						if (potRed.a.$ === 'Value_LinearFn') {
+							var _v4 = potRed.a;
+							var id = _v4.a;
+							var e1 = _v4.b;
+							var env1 = _v4.c;
+							var v2 = potRed.b;
+							var extendedEnv = A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									id,
+									$author$project$Evaluation$ValueEntry(v2)),
+								env1);
+							var thread = A4($author$project$Evaluation$Thread, flag, ec, e1, extendedEnv);
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										threads: A2($elm$core$List$cons, thread, config.threads)
+									}));
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_UnApp':
+						if (potRed.a.$ === 'Value_UnrestrictedFn') {
+							var _v5 = potRed.a;
+							var id = _v5.a;
+							var e1 = _v5.b;
+							var env1 = _v5.c;
+							var e2 = potRed.b;
+							var env = potRed.c;
+							var extendedEnv = A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									id,
+									A2($author$project$Evaluation$ClosureEntry, e2, env)),
+								env1);
+							var thread = A4($author$project$Evaluation$Thread, flag, ec, e1, extendedEnv);
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										threads: A2($elm$core$List$cons, thread, config.threads)
+									}));
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_LetPair':
+						if (potRed.c.$ === 'Value_Pair') {
+							var id1 = potRed.a;
+							var id2 = potRed.b;
+							var _v6 = potRed.c;
+							var v1 = _v6.a;
+							var v2 = _v6.b;
+							var e2 = potRed.d;
+							var env = potRed.e;
+							var extendedEnv = A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									id1,
+									$author$project$Evaluation$ValueEntry(v1)),
+								A2(
+									$elm$core$List$cons,
+									_Utils_Tuple2(
+										id2,
+										$author$project$Evaluation$ValueEntry(v2)),
+									env));
+							var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										threads: A2($elm$core$List$cons, thread, config.threads)
+									}));
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_LetUnit':
+						if (potRed.a.$ === 'Value_Unit') {
+							var _v7 = potRed.a;
+							var e2 = potRed.b;
+							var env = potRed.c;
+							var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, env);
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										threads: A2($elm$core$List$cons, thread, config.threads)
+									}));
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_Case':
+						switch (potRed.a.$) {
+							case 'Value_Inl':
+								var v1 = potRed.a.a;
+								var id1 = potRed.b;
+								var e1 = potRed.c;
+								var env = potRed.f;
+								var extendedEnv = A2(
+									$elm$core$List$cons,
+									_Utils_Tuple2(
+										id1,
+										$author$project$Evaluation$ValueEntry(v1)),
+									env);
+								var thread = A4($author$project$Evaluation$Thread, flag, ec, e1, extendedEnv);
+								return $elm$core$Result$Ok(
+									_Utils_update(
+										config,
+										{
+											threads: A2($elm$core$List$cons, thread, config.threads)
+										}));
+							case 'Value_Inr':
+								var v2 = potRed.a.a;
+								var id2 = potRed.d;
+								var e2 = potRed.e;
+								var env = potRed.f;
+								var extendedEnv = A2(
+									$elm$core$List$cons,
+									_Utils_Tuple2(
+										id2,
+										$author$project$Evaluation$ValueEntry(v2)),
+									env);
+								var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+								return $elm$core$Result$Ok(
+									_Utils_update(
+										config,
+										{
+											threads: A2($elm$core$List$cons, thread, config.threads)
+										}));
+							default:
+								break _v3$25;
+						}
+					case 'Pot_LetOfCourse':
+						if (potRed.b.$ === 'Value_OfCourse') {
+							var id = potRed.a;
+							var _v8 = potRed.b;
+							var e1 = _v8.a;
+							var env1 = _v8.b;
+							var e2 = potRed.c;
+							var env = potRed.d;
+							var extendedEnv = A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									id,
+									A2($author$project$Evaluation$ClosureEntry, e1, env1)),
+								env);
+							var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										threads: A2($elm$core$List$cons, thread, config.threads)
+									}));
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_Unfold':
+						switch (potRed.a.$) {
+							case 'Value_Fold':
+								var v1 = potRed.a.a;
+								var thread = A4(
+									$author$project$Evaluation$Thread,
+									flag,
+									ec,
+									$author$project$AbstractSyntax$Term_Var('x'),
+									_List_fromArray(
+										[
+											_Utils_Tuple2(
+											'x',
+											$author$project$Evaluation$ValueEntry(v1))
+										]));
+								return $elm$core$Result$Ok(
+									_Utils_update(
+										config,
+										{
+											threads: A2($elm$core$List$cons, thread, config.threads)
+										}));
+							case 'Value_ChannelName':
+								var chId = potRed.a.a;
+								var thread = A4(
+									$author$project$Evaluation$Thread,
+									flag,
+									ec,
+									$author$project$AbstractSyntax$Term_Var('x'),
+									_List_fromArray(
+										[
+											_Utils_Tuple2(
+											'x',
+											$author$project$Evaluation$ValueEntry(
+												$author$project$Evaluation$Value_ChannelName(chId)))
+										]));
+								return $elm$core$Result$Ok(
+									_Utils_update(
+										config,
+										{
+											threads: A2($elm$core$List$cons, thread, config.threads)
+										}));
+							default:
+								break _v3$25;
+						}
+					case 'Pot_LetLin':
+						var id = potRed.a;
+						var v1 = potRed.b;
+						var e2 = potRed.c;
+						var env = potRed.d;
+						var extendedEnv = A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(
+								id,
+								$author$project$Evaluation$ValueEntry(v1)),
+							env);
+						var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+						return $elm$core$Result$Ok(
+							_Utils_update(
+								config,
+								{
+									threads: A2($elm$core$List$cons, thread, config.threads)
+								}));
+					case 'Pot_LetUn':
+						var id = potRed.a;
+						var e1 = potRed.b;
+						var e2 = potRed.c;
+						var env = potRed.d;
+						var extendedEnv = A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(
+								id,
+								A2($author$project$Evaluation$ClosureEntry, e1, env)),
+							env);
+						var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+						return $elm$core$Result$Ok(
+							_Utils_update(
+								config,
+								{
+									threads: A2($elm$core$List$cons, thread, config.threads)
+								}));
+					case 'Pot_LetRec':
+						var id = potRed.a;
+						var e1 = potRed.b;
+						var e2 = potRed.c;
+						var env = potRed.d;
+						var dummyType = $author$project$AbstractSyntax$Type_Unit;
+						var extendedEnv = A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(
+								id,
+								A2(
+									$author$project$Evaluation$ClosureEntry,
+									A4($author$project$AbstractSyntax$Term_LetRec, id, dummyType, e1, e1),
+									env)),
+							env);
+						var thread = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+						return $elm$core$Result$Ok(
+							_Utils_update(
+								config,
+								{
+									threads: A2($elm$core$List$cons, thread, config.threads)
+								}));
+					case 'Pot_Send':
+						if (potRed.b.$ === 'Value_ChannelName') {
+							var v = potRed.a;
+							var chId = potRed.b.a;
+							var _v9 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v9.$ === 'Just') {
+								if (_v9.a.b && (_v9.a.a.c.$ === 'Pot_Receive')) {
+									var _v10 = _v9.a;
+									var _v11 = _v10.a;
+									var flag2 = _v11.a;
+									var ec2 = _v11.b;
+									var xs = _v10.b;
+									var value2 = A2(
+										$author$project$Evaluation$Value_Pair,
+										v,
+										$author$project$Evaluation$Value_ChannelName(chId));
+									var value1 = $author$project$Evaluation$Value_ChannelName(chId);
+									var thread2 = A4(
+										$author$project$Evaluation$Thread,
+										flag2,
+										ec2,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value2))
+											]));
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value1))
+											]));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3($author$project$Utils$update, chId, xs, config.channels),
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v9.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										A2(
+											$author$project$Evaluation$Pot_Send,
+											v,
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_Receive':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var _v12 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v12.$ === 'Just') {
+								if (_v12.a.b && (_v12.a.a.c.$ === 'Pot_Send')) {
+									var _v13 = _v12.a;
+									var _v14 = _v13.a;
+									var flag2 = _v14.a;
+									var ec2 = _v14.b;
+									var _v15 = _v14.c;
+									var v = _v15.a;
+									var xs = _v13.b;
+									var value2 = $author$project$Evaluation$Value_ChannelName(chId);
+									var value1 = A2(
+										$author$project$Evaluation$Value_Pair,
+										v,
+										$author$project$Evaluation$Value_ChannelName(chId));
+									var thread2 = A4(
+										$author$project$Evaluation$Thread,
+										flag2,
+										ec2,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value2))
+											]));
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value1))
+											]));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3($author$project$Utils$update, chId, xs, config.channels),
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v12.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										$author$project$Evaluation$Pot_Receive(
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_SelectLeft':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var _v16 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v16.$ === 'Just') {
+								if (_v16.a.b && (_v16.a.a.c.$ === 'Pot_Branch')) {
+									var _v17 = _v16.a;
+									var _v18 = _v17.a;
+									var flag2 = _v18.a;
+									var ec2 = _v18.b;
+									var _v19 = _v18.c;
+									var id1 = _v19.b;
+									var e1 = _v19.c;
+									var env = _v19.f;
+									var xs = _v17.b;
+									var value = $author$project$Evaluation$Value_ChannelName(chId);
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value))
+											]));
+									var extendedEnv = A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(
+											id1,
+											$author$project$Evaluation$ValueEntry(value)),
+										env);
+									var thread2 = A4($author$project$Evaluation$Thread, flag2, ec2, e1, extendedEnv);
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3($author$project$Utils$update, chId, xs, config.channels),
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v16.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										$author$project$Evaluation$Pot_SelectLeft(
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_SelectRight':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var _v20 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v20.$ === 'Just') {
+								if (_v20.a.b && (_v20.a.a.c.$ === 'Pot_Branch')) {
+									var _v21 = _v20.a;
+									var _v22 = _v21.a;
+									var flag2 = _v22.a;
+									var ec2 = _v22.b;
+									var _v23 = _v22.c;
+									var id2 = _v23.d;
+									var e2 = _v23.e;
+									var env = _v23.f;
+									var xs = _v21.b;
+									var value = $author$project$Evaluation$Value_ChannelName(chId);
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value))
+											]));
+									var extendedEnv = A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(
+											id2,
+											$author$project$Evaluation$ValueEntry(value)),
+										env);
+									var thread2 = A4($author$project$Evaluation$Thread, flag2, ec2, e2, extendedEnv);
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3($author$project$Utils$update, chId, xs, config.channels),
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v20.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										$author$project$Evaluation$Pot_SelectRight(
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_Branch':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var id1 = potRed.b;
+							var e1 = potRed.c;
+							var id2 = potRed.d;
+							var e2 = potRed.e;
+							var env = potRed.f;
+							var _v24 = A2($author$project$Utils$lookup, chId, config.channels);
+							_v24$2:
+							while (true) {
+								if (_v24.$ === 'Just') {
+									if (_v24.a.b) {
+										switch (_v24.a.a.c.$) {
+											case 'Pot_SelectLeft':
+												var _v25 = _v24.a;
+												var _v26 = _v25.a;
+												var flag2 = _v26.a;
+												var ec2 = _v26.b;
+												var xs = _v25.b;
+												var value = $author$project$Evaluation$Value_ChannelName(chId);
+												var thread2 = A4(
+													$author$project$Evaluation$Thread,
+													flag2,
+													ec2,
+													$author$project$AbstractSyntax$Term_Var('x'),
+													_List_fromArray(
+														[
+															_Utils_Tuple2(
+															'x',
+															$author$project$Evaluation$ValueEntry(value))
+														]));
+												var extendedEnv = A2(
+													$elm$core$List$cons,
+													_Utils_Tuple2(
+														id1,
+														$author$project$Evaluation$ValueEntry(value)),
+													env);
+												var thread1 = A4($author$project$Evaluation$Thread, flag, ec, e1, extendedEnv);
+												return $elm$core$Result$Ok(
+													_Utils_update(
+														config,
+														{
+															channels: A3($author$project$Utils$update, chId, xs, config.channels),
+															threads: A2(
+																$elm$core$List$cons,
+																thread1,
+																A2($elm$core$List$cons, thread2, config.threads))
+														}));
+											case 'Pot_SelectRight':
+												var _v27 = _v24.a;
+												var _v28 = _v27.a;
+												var flag2 = _v28.a;
+												var ec2 = _v28.b;
+												var xs = _v27.b;
+												var value = $author$project$Evaluation$Value_ChannelName(chId);
+												var thread2 = A4(
+													$author$project$Evaluation$Thread,
+													flag2,
+													ec2,
+													$author$project$AbstractSyntax$Term_Var('x'),
+													_List_fromArray(
+														[
+															_Utils_Tuple2(
+															'x',
+															$author$project$Evaluation$ValueEntry(value))
+														]));
+												var extendedEnv = A2(
+													$elm$core$List$cons,
+													_Utils_Tuple2(
+														id2,
+														$author$project$Evaluation$ValueEntry(value)),
+													env);
+												var thread1 = A4($author$project$Evaluation$Thread, flag, ec, e2, extendedEnv);
+												return $elm$core$Result$Ok(
+													_Utils_update(
+														config,
+														{
+															channels: A3($author$project$Utils$update, chId, xs, config.channels),
+															threads: A2(
+																$elm$core$List$cons,
+																thread1,
+																A2($elm$core$List$cons, thread2, config.threads))
+														}));
+											default:
+												break _v24$2;
+										}
+									} else {
+										break _v24$2;
+									}
+								} else {
+									return $elm$core$Result$Err(_Utils_Tuple0);
+								}
+							}
+							var xs = _v24.a;
+							var thread = A3(
+								$author$project$Evaluation$FocusedThread,
+								flag,
+								ec,
+								A6(
+									$author$project$Evaluation$Pot_Branch,
+									$author$project$Evaluation$Value_ChannelName(chId),
+									id1,
+									e1,
+									id2,
+									e2,
+									env));
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										channels: A3(
+											$author$project$Utils$update,
+											chId,
+											_Utils_ap(
+												xs,
+												_List_fromArray(
+													[thread])),
+											config.channels)
+									}));
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_Close':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var _v29 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v29.$ === 'Just') {
+								if (_v29.a.b && (_v29.a.a.c.$ === 'Pot_Close')) {
+									var _v30 = _v29.a;
+									var _v31 = _v30.a;
+									var flag2 = _v31.a;
+									var ec2 = _v31.b;
+									var thread2 = A4(
+										$author$project$Evaluation$Thread,
+										flag2,
+										ec2,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry($author$project$Evaluation$Value_Unit))
+											]));
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry($author$project$Evaluation$Value_Unit))
+											]));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A2($author$project$Utils$delete, chId, config.channels),
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v29.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										$author$project$Evaluation$Pot_Close(
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_NewAccess':
+						var id1 = potRed.a;
+						var id2 = potRed.b;
+						var e = potRed.c;
+						var env = potRed.d;
+						var newChId = config.nextChannelId;
+						var value = $author$project$Evaluation$Value_ChannelName(newChId);
+						var extendedEnv = A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(
+								id1,
+								$author$project$Evaluation$ValueEntry(value)),
+							A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									id2,
+									$author$project$Evaluation$ValueEntry(value)),
+								env));
+						var thread = A4($author$project$Evaluation$Thread, flag, ec, e, extendedEnv);
+						return $elm$core$Result$Ok(
+							_Utils_update(
+								config,
+								{
+									channels: A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(newChId, _List_Nil),
+										config.channels),
+									nextChannelId: config.nextChannelId + 1,
+									threads: A2($elm$core$List$cons, thread, config.threads)
+								}));
+					case 'Pot_Accept':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var _v32 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v32.$ === 'Just') {
+								if (_v32.a.b && (_v32.a.a.c.$ === 'Pot_Request')) {
+									var _v33 = _v32.a;
+									var _v34 = _v33.a;
+									var flag2 = _v34.a;
+									var ec2 = _v34.b;
+									var xs = _v33.b;
+									var newChId = config.nextChannelId;
+									var value = $author$project$Evaluation$Value_ChannelName(newChId);
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value))
+											]));
+									var thread2 = A4(
+										$author$project$Evaluation$Thread,
+										flag2,
+										ec2,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value))
+											]));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A2(
+													$elm$core$List$cons,
+													_Utils_Tuple2(newChId, _List_Nil),
+													A3($author$project$Utils$update, chId, xs, config.channels)),
+												nextChannelId: config.nextChannelId + 1,
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v32.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										$author$project$Evaluation$Pot_Accept(
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_Request':
+						if (potRed.a.$ === 'Value_ChannelName') {
+							var chId = potRed.a.a;
+							var _v35 = A2($author$project$Utils$lookup, chId, config.channels);
+							if (_v35.$ === 'Just') {
+								if (_v35.a.b && (_v35.a.a.c.$ === 'Pot_Accept')) {
+									var _v36 = _v35.a;
+									var _v37 = _v36.a;
+									var flag2 = _v37.a;
+									var ec2 = _v37.b;
+									var xs = _v36.b;
+									var newChId = config.nextChannelId;
+									var value = $author$project$Evaluation$Value_ChannelName(newChId);
+									var thread1 = A4(
+										$author$project$Evaluation$Thread,
+										flag,
+										ec,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value))
+											]));
+									var thread2 = A4(
+										$author$project$Evaluation$Thread,
+										flag2,
+										ec2,
+										$author$project$AbstractSyntax$Term_Var('x'),
+										_List_fromArray(
+											[
+												_Utils_Tuple2(
+												'x',
+												$author$project$Evaluation$ValueEntry(value))
+											]));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A2(
+													$elm$core$List$cons,
+													_Utils_Tuple2(newChId, _List_Nil),
+													A3($author$project$Utils$update, chId, xs, config.channels)),
+												nextChannelId: config.nextChannelId + 1,
+												threads: A2(
+													$elm$core$List$cons,
+													thread1,
+													A2($elm$core$List$cons, thread2, config.threads))
+											}));
+								} else {
+									var xs = _v35.a;
+									var thread = A3(
+										$author$project$Evaluation$FocusedThread,
+										flag,
+										ec,
+										$author$project$Evaluation$Pot_Request(
+											$author$project$Evaluation$Value_ChannelName(chId)));
+									return $elm$core$Result$Ok(
+										_Utils_update(
+											config,
+											{
+												channels: A3(
+													$author$project$Utils$update,
+													chId,
+													_Utils_ap(
+														xs,
+														_List_fromArray(
+															[thread])),
+													config.channels)
+											}));
+								}
+							} else {
+								return $elm$core$Result$Err(_Utils_Tuple0);
+							}
+						} else {
+							break _v3$25;
+						}
+					case 'Pot_NewSession':
+						var newChId = config.nextChannelId;
+						var value = A2(
+							$author$project$Evaluation$Value_Pair,
+							$author$project$Evaluation$Value_ChannelName(newChId),
+							$author$project$Evaluation$Value_ChannelName(newChId));
+						var thread = A4(
+							$author$project$Evaluation$Thread,
+							flag,
+							ec,
+							$author$project$AbstractSyntax$Term_Var('x'),
+							_List_fromArray(
+								[
+									_Utils_Tuple2(
+									'x',
+									$author$project$Evaluation$ValueEntry(value))
+								]));
+						return $elm$core$Result$Ok(
+							_Utils_update(
+								config,
+								{
+									channels: A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(newChId, _List_Nil),
+										config.channels),
+									nextChannelId: config.nextChannelId + 1,
+									threads: A2($elm$core$List$cons, thread, config.threads)
+								}));
+					case 'Pot_Fork':
+						if (potRed.a.$ === 'Value_LinearFn') {
+							var _v38 = potRed.a;
+							var id = _v38.a;
+							var e = _v38.b;
+							var env = _v38.c;
+							var newChId = config.nextChannelId;
+							var value = $author$project$Evaluation$Value_ChannelName(newChId);
+							var thread1 = A4(
+								$author$project$Evaluation$Thread,
+								flag,
+								ec,
+								$author$project$AbstractSyntax$Term_Var('x'),
+								_List_fromArray(
+									[
+										_Utils_Tuple2(
+										'x',
+										$author$project$Evaluation$ValueEntry(value))
+									]));
+							var extendedEnv = A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									id,
+									$author$project$Evaluation$ValueEntry(value)),
+								env);
+							var thread2 = A4($author$project$Evaluation$Thread, $author$project$Evaluation$Child, $author$project$Evaluation$EC_Empty, e, extendedEnv);
+							return $elm$core$Result$Ok(
+								_Utils_update(
+									config,
+									{
+										channels: A2(
+											$elm$core$List$cons,
+											_Utils_Tuple2(newChId, _List_Nil),
+											config.channels),
+										nextChannelId: config.nextChannelId + 1,
+										threads: A2(
+											$elm$core$List$cons,
+											thread1,
+											A2($elm$core$List$cons, thread2, config.threads))
+									}));
+						} else {
+							break _v3$25;
+						}
+					default:
+						var e = potRed.a;
+						var env = potRed.b;
+						var thread2 = A4($author$project$Evaluation$Thread, $author$project$Evaluation$Child, $author$project$Evaluation$EC_Empty, e, env);
+						var thread1 = A4(
+							$author$project$Evaluation$Thread,
+							flag,
+							ec,
+							$author$project$AbstractSyntax$Term_Var('x'),
+							_List_fromArray(
+								[
+									_Utils_Tuple2(
+									'x',
+									$author$project$Evaluation$ValueEntry($author$project$Evaluation$Value_Unit))
+								]));
+						return $elm$core$Result$Ok(
+							_Utils_update(
+								config,
+								{
+									threads: A2(
+										$elm$core$List$cons,
+										thread1,
+										A2($elm$core$List$cons, thread2, config.threads))
+								}));
+				}
+			}
+			return $elm$core$Result$Err(_Utils_Tuple0);
+		}
+	});
+var $elm$random$Random$step = F2(
+	function (_v0, seed) {
+		var generator = _v0.a;
+		return generator(seed);
+	});
+var $author$project$Evaluation$step = F2(
+	function (seed, config) {
+		var pickRandomThread = $elm_community$random_extra$Random$List$choose(config.threads);
+		var _v0 = A2($elm$random$Random$step, pickRandomThread, seed);
+		var _v1 = _v0.a;
+		var maybeThread = _v1.a;
+		var threads = _v1.b;
+		var newSeed = _v0.b;
+		if (maybeThread.$ === 'Just') {
+			var thread = maybeThread.a;
+			var _v3 = A2(
+				$author$project$Evaluation$reduce,
+				thread,
+				_Utils_update(
+					config,
+					{threads: threads}));
+			if (_v3.$ === 'Ok') {
+				var newConfig = _v3.a;
+				return _Utils_Tuple3($author$project$Evaluation$Running, newConfig, newSeed);
+			} else {
+				return _Utils_Tuple3($author$project$Evaluation$Error, config, newSeed);
+			}
+		} else {
+			return $author$project$Evaluation$noThreadsAreBlocked(config.channels) ? _Utils_Tuple3($author$project$Evaluation$Finished, config, newSeed) : _Utils_Tuple3($author$project$Evaluation$Lock, config, newSeed);
+		}
+	});
+var $elm$file$File$Download$string = F3(
+	function (name, mime, content) {
+		return A2(
+			$elm$core$Task$perform,
+			$elm$core$Basics$never,
+			A3(_File_download, name, mime, content));
+	});
+var $elm$file$File$toString = _File_toString;
+var $elm$core$Result$andThen = F2(
+	function (callback, result) {
+		if (result.$ === 'Ok') {
+			var value = result.a;
+			return callback(value);
+		} else {
+			var msg = result.a;
+			return $elm$core$Result$Err(msg);
+		}
+	});
+var $author$project$AbstractSyntax$kindToString = function (kind) {
+	if (kind.$ === 'Kind_SessionType') {
+		return '*s';
+	} else {
+		return '*ns';
+	}
+};
 var $author$project$AbstractSyntax$typeToString = function (aType) {
 	switch (aType.$) {
 		case 'Type_Var':
@@ -9111,27 +11264,6 @@ var $author$project$TypeInference$checkOptionalAnnotation = F4(
 			return $elm$core$Result$Ok(t1);
 		}
 	});
-var $elm$core$List$drop = F2(
-	function (n, list) {
-		drop:
-		while (true) {
-			if (n <= 0) {
-				return list;
-			} else {
-				if (!list.b) {
-					return list;
-				} else {
-					var x = list.a;
-					var xs = list.b;
-					var $temp$n = n - 1,
-						$temp$list = xs;
-					n = $temp$n;
-					list = $temp$list;
-					continue drop;
-				}
-			}
-		}
-	});
 var $author$project$TypeInference$isUsed = F2(
 	function (id, context) {
 		var _v0 = A2($author$project$Utils$lookup, id, context);
@@ -9208,7 +11340,6 @@ var $author$project$TypeInference$markAsUsedUnrestrictedly = function (context) 
 	};
 	return A2($elm$core$List$map, f, context);
 };
-var $elm$core$Basics$not = _Basics_not;
 var $author$project$TypeInference$typeInferTerm = F4(
 	function (typeVarContext, typeVarEnv, termVarContext, term) {
 		switch (term.$) {
@@ -10126,54 +12257,403 @@ var $author$project$TypeInference$typeInferProgram = function (_v0) {
 			$elm$core$List$reverse(typevars),
 			typedefs));
 };
-var $author$project$Main$parseInferEval = function (code) {
-	var _v0 = $author$project$Parsing$parseProgram(code);
-	if (_v0.$ === 'Ok') {
-		var program = _v0.a;
-		var _v1 = $author$project$TypeInference$typeInferProgram(program);
-		if (_v1.$ === 'Ok') {
-			var aType = _v1.a;
-			return A2($author$project$Main$EvaluationError, program, aType);
-		} else {
-			var error = _v1.a;
-			return A2($author$project$Main$TypeError, program, error);
+var $author$project$Main$update = F2(
+	function (msg, model) {
+		update:
+		while (true) {
+			switch (msg.$) {
+				case 'ChangeCode':
+					var newCode = msg.a;
+					var _v1 = $author$project$Parsing$parseProgram(newCode);
+					if (_v1.$ === 'Err') {
+						var errors = _v1.a;
+						return _Utils_Tuple2(
+							{
+								code: newCode,
+								state: $author$project$Main$SyntaxError(
+									A2($elm$core$String$join, ' or ', errors))
+							},
+							$elm$core$Platform$Cmd$none);
+					} else {
+						var program = _v1.a;
+						var _v2 = $author$project$TypeInference$typeInferProgram(program);
+						if (_v2.$ === 'Err') {
+							var error = _v2.a;
+							return _Utils_Tuple2(
+								{
+									code: newCode,
+									state: $author$project$Main$TypeError(error)
+								},
+								$elm$core$Platform$Cmd$none);
+						} else {
+							var aType = _v2.a;
+							return _Utils_Tuple2(
+								{
+									code: newCode,
+									state: A3(
+										$author$project$Main$WaitingSeed,
+										$author$project$Evaluation$initialConfig(program.mainTerm),
+										program,
+										aType)
+								},
+								$author$project$Main$getSeedFromTime);
+						}
+					}
+				case 'GotSeed':
+					var seed = msg.a;
+					var _v3 = model.state;
+					if (_v3.$ === 'WaitingSeed') {
+						var config = _v3.a;
+						var program = _v3.b;
+						var aType = _v3.c;
+						var $temp$msg = $author$project$Main$EvalStep,
+							$temp$model = _Utils_update(
+							model,
+							{
+								state: A5($author$project$Main$Evaluation, $author$project$Evaluation$Running, config, seed, program, aType)
+							});
+						msg = $temp$msg;
+						model = $temp$model;
+						continue update;
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'EvalStep':
+					var _v4 = model.state;
+					if ((_v4.$ === 'Evaluation') && (_v4.a.$ === 'Running')) {
+						var _v5 = _v4.a;
+						var config = _v4.b;
+						var seed = _v4.c;
+						var program = _v4.d;
+						var aType = _v4.e;
+						var _v6 = A2($author$project$Evaluation$step, seed, config);
+						var newEvalStatus = _v6.a;
+						var newConfig = _v6.b;
+						var newSeed = _v6.c;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									state: A5($author$project$Main$Evaluation, newEvalStatus, newConfig, newSeed, program, aType)
+								}),
+							$author$project$Main$fireMsg($author$project$Main$EvalStep));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'Stop':
+					var _v7 = model.state;
+					if ((_v7.$ === 'Evaluation') && (_v7.a.$ === 'Running')) {
+						var _v8 = _v7.a;
+						var config = _v7.b;
+						var seed = _v7.c;
+						var program = _v7.d;
+						var aType = _v7.e;
+						var newConfig = _Utils_update(
+							config,
+							{channels: _List_Nil, threads: _List_Nil});
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									state: A5($author$project$Main$Evaluation, $author$project$Evaluation$Stopped, newConfig, seed, program, aType)
+								}),
+							$elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'ReRun':
+					var _v9 = model.state;
+					if (_v9.$ === 'Evaluation') {
+						if (_v9.a.$ === 'Running') {
+							var _v10 = _v9.a;
+							return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+						} else {
+							var seed = _v9.c;
+							var program = _v9.d;
+							var aType = _v9.e;
+							var $temp$msg = $author$project$Main$EvalStep,
+								$temp$model = _Utils_update(
+								model,
+								{
+									state: A5(
+										$author$project$Main$Evaluation,
+										$author$project$Evaluation$Running,
+										$author$project$Evaluation$initialConfig(program.mainTerm),
+										seed,
+										program,
+										aType)
+								});
+							msg = $temp$msg;
+							model = $temp$model;
+							continue update;
+						}
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'LoadFile':
+					return _Utils_Tuple2(
+						model,
+						A2($elm$file$File$Select$file, _List_Nil, $author$project$Main$GotFile));
+				case 'SaveFile':
+					return _Utils_Tuple2(
+						model,
+						A3($elm$file$File$Download$string, 'programa.stl', 'text/plain', model.code));
+				default:
+					var file = msg.a;
+					return _Utils_Tuple2(
+						model,
+						A2(
+							$elm$core$Task$perform,
+							$author$project$Main$ChangeCode,
+							$elm$file$File$toString(file)));
+			}
 		}
-	} else {
-		var errors = _v0.a;
-		return $author$project$Main$SyntaxError(
-			A2($elm$core$String$join, ' or ', errors));
+	});
+var $author$project$Main$LoadFile = {$: 'LoadFile'};
+var $author$project$Main$SaveFile = {$: 'SaveFile'};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$autofocus = $elm$html$Html$Attributes$boolProperty('autofocus');
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$html$Html$Attributes$cols = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'cols',
+		$elm$core$String$fromInt(n));
+};
+var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$html$Html$h1 = _VirtualDom_node('h1');
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
+var $elm$html$Html$Attributes$rows = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'rows',
+		$elm$core$String$fromInt(n));
+};
+var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $elm$html$Html$textarea = _VirtualDom_node('textarea');
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Main$ReRun = {$: 'ReRun'};
+var $author$project$Main$Stop = {$: 'Stop'};
+var $elm$html$Html$pre = _VirtualDom_node('pre');
+var $author$project$Evaluation$valueToString = function (value) {
+	switch (value.$) {
+		case 'Value_ChannelName':
+			return '<nome de canal>';
+		case 'Value_LinearFn':
+			return '<função linear>';
+		case 'Value_UnrestrictedFn':
+			return '<função irrestrita>';
+		case 'Value_Pair':
+			var v1 = value.a;
+			var v2 = value.b;
+			return '{' + ($author$project$Evaluation$valueToString(v1) + (', ' + ($author$project$Evaluation$valueToString(v2) + '}')));
+		case 'Value_Unit':
+			return '{}';
+		case 'Value_Inl':
+			var v = value.a;
+			return 'inl (' + ($author$project$Evaluation$valueToString(v) + ')');
+		case 'Value_Inr':
+			var v = value.a;
+			return 'inr (' + ($author$project$Evaluation$valueToString(v) + ')');
+		case 'Value_OfCourse':
+			return '<clausura of course>';
+		default:
+			var v = value.a;
+			return 'fold (' + ($author$project$Evaluation$valueToString(v) + ')');
 	}
 };
-var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Main$viewParsed = function (code) {
-	var _v0 = $author$project$Main$parseInferEval(code);
-	switch (_v0.$) {
+var $author$project$Main$viewState = function (state) {
+	switch (state.$) {
 		case 'SyntaxError':
 			return A2(
-				$elm$html$Html$pre,
+				$elm$html$Html$div,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Erro de sintaxe')
+						A2(
+						$elm$html$Html$pre,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Erro de sintaxe')
+							]))
 					]));
 		case 'TypeError':
-			var error = _v0.b;
+			var error = state.a;
 			return A2(
-				$elm$html$Html$pre,
+				$elm$html$Html$div,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Erro de tipo: ' + error)
+						A2(
+						$elm$html$Html$pre,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Erro de tipo: ' + error)
+							]))
+					]));
+		case 'WaitingSeed':
+			var aType = state.c;
+			return A2(
+				$elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$pre,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								'Tipo: \n' + $author$project$AbstractSyntax$typeToString(aType))
+							]))
 					]));
 		default:
-			var aType = _v0.b;
+			var status = state.a;
+			var returnValue = state.b.returnValue;
+			var aType = state.e;
+			var valueString = function () {
+				if (returnValue.$ === 'Just') {
+					var value = returnValue.a;
+					return 'Valor de retorno: ' + $author$project$Evaluation$valueToString(value);
+				} else {
+					return '';
+				}
+			}();
+			var statusString = function () {
+				switch (status.$) {
+					case 'Running':
+						return 'Rodando';
+					case 'Finished':
+						return 'Terminado';
+					case 'Lock':
+						return 'Lock';
+					case 'Error':
+						return 'Erro';
+					default:
+						return 'Parado';
+				}
+			}();
 			return A2(
-				$elm$html$Html$pre,
+				$elm$html$Html$div,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text(
-						'Tipo: \n' + $author$project$AbstractSyntax$typeToString(aType))
+						A2(
+						$elm$html$Html$pre,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								'Tipo: ' + $author$project$AbstractSyntax$typeToString(aType))
+							])),
+						A2(
+						$elm$html$Html$pre,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Status: ' + statusString)
+							])),
+						A2(
+						$elm$html$Html$pre,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(valueString)
+							])),
+						function () {
+						if (status.$ === 'Running') {
+							return A2(
+								$elm$html$Html$button,
+								_List_fromArray(
+									[
+										$elm$html$Html$Events$onClick($author$project$Main$Stop)
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Parar')
+									]));
+						} else {
+							return A2(
+								$elm$html$Html$button,
+								_List_fromArray(
+									[
+										$elm$html$Html$Events$onClick($author$project$Main$ReRun)
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Rodar de novo')
+									]));
+						}
+					}()
 					]));
 	}
 };
@@ -10221,14 +12701,14 @@ var $author$project$Main$view = function (model) {
 				$elm$html$Html$textarea,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$rows(25),
+						$elm$html$Html$Attributes$rows(23),
 						$elm$html$Html$Attributes$cols(80),
 						$elm$html$Html$Attributes$autofocus(true),
 						$elm$html$Html$Events$onInput($author$project$Main$ChangeCode),
 						$elm$html$Html$Attributes$value(model.code)
 					]),
 				_List_Nil),
-				$author$project$Main$viewParsed(model.code)
+				$author$project$Main$viewState(model.state)
 			]),
 		title: 'Simulador de cálculo-lambda concorrente'
 	};

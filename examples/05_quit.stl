@@ -1,26 +1,66 @@
-typevars
-  Nat  : *ns ;
-  Bool : *ns
-end
-
 typedefs
+  Bool     = 1 + 1 ;
+  Nat      = rec x : *ns. @(1 + x) ;
+  
   Servidor = rec X : *s . &{ ?Nat.!Bool.X, End } ;
   Cliente  = rec X : *s . +{ !Nat.?Bool.X, End }
 end
 
 vars
-  un zero    : Nat ;
-  un succ    : Nat -o Nat ;
-  un gt      : Nat -o Nat -o Bool ;
   un or      : Bool -o Bool -o Bool
 end
+
+let un false : Bool = inl [1] {} in
+let un true  : Bool = inr [1] {} in
+
+let un discardBool : Bool -o 1 =
+  \lin b : Bool.
+    case b of
+      inl unit -> unit ;
+      inr unit -> unit
+in
+
+let un or : Bool -o Bool -o Bool =
+  \lin a : Bool.
+  \lin b : Bool.
+    case a of
+      inl unit -> let {} = unit in b ;
+
+      inr unit ->
+        let {} = unit in
+        let {} = discardBool b in
+        true
+in
+
+let un zero : Nat = fold [Nat] @(inl [Nat] {}) in
+
+let un succ : Nat -o Nat =
+  \lin n : Nat.
+    let @unfoldN = unfold n in
+    fold [Nat] @(inr [1] (fold [Nat] @unfoldN))
+in
+
+let un discard : Nat -o 1 =
+  \lin n : Nat.
+    let @x = unfold n in {}
+in
+
+let un isZero : Nat -o Bool =
+  \lin n : Nat.
+    let @unfoldN = unfold n in
+    case unfoldN of
+      inl unit  -> let {} = unit in true ;
+      inr predN -> let {} = discard predN in false
+in
+
+-------------------------------------------------------
 
 let rec servidor : Servidor -o 1 =
   \lin s0 : Servidor.
     branch (unfold s0) of
       left s1 ->
-        let {n, s2} = receive s1          in
-        let lin s3  = send (gt n zero) s2 in
+        let {n, s2} = receive s1         in
+        let lin s3  = send (isZero n) s2 in
         servidor s3 ;
       
       right s1 ->

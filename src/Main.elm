@@ -3,7 +3,7 @@ module Main exposing (main)
 import AbstractSyntax exposing (..)
 import Parsing exposing (parseProgram)
 import TypeInference exposing (typeInferProgram)
---import Evaluation exposing (evalProgram, Value(..), valueToString)
+import Evaluation exposing (..)
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -12,6 +12,9 @@ import File exposing (File)
 import File.Select as Select
 import File.Download as Download
 import Task
+import Time exposing (posixToMillis)
+import Random exposing (Seed, initialSeed)
+import Process exposing (sleep)
 
 
 -- MAIN
@@ -29,27 +32,93 @@ main =
 
 -- MODEL
 
-type alias Model = { code : String }
+type InterpreterState
+  = SyntaxError String
+  | TypeError String
+  | WaitingSeed Configuration STLProgram Type
+  | Evaluation EvalStatus Configuration Seed STLProgram Type
+
+type alias Model = { code : String, state : InterpreterState }
 
 init : () -> (Model, Cmd Msg)
-init _ = ({ code = "" }, Cmd.none)
+init _ = ({ code = "", state = SyntaxError "" }, Cmd.none)
 
 
 
 -- UPDATE
 
-type Msg = ChangeCode String | LoadFile | SaveFile | GotFile File
+type Msg = ChangeCode String | GotSeed Seed | EvalStep | Stop | ReRun | LoadFile | SaveFile | GotFile File
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = 
   case msg of
-    ChangeCode newCode -> ( { model | code = newCode }, Cmd.none )
+    ChangeCode newCode ->
+      case parseProgram newCode of
+        Err errors ->
+          ( { code = newCode, state = SyntaxError (String.join " or " errors) }
+          , Cmd.none )
+        Ok program ->
+          case typeInferProgram program of
+            Err error -> 
+              ( { code = newCode, state = TypeError error }
+              , Cmd.none )
+            Ok aType ->
+              ( { code = newCode, state = WaitingSeed (initialConfig program.mainTerm) program aType }
+              , getSeedFromTime )
+    
+    GotSeed seed ->
+      case model.state of
+        WaitingSeed config program aType ->
+          update EvalStep { model | state = Evaluation Running config seed program aType }
+        
+        _ -> (model, Cmd.none)
+    
+    EvalStep ->
+      case model.state of
+        Evaluation Running config seed program aType ->
+          let
+            (newEvalStatus, newConfig, newSeed) = Evaluation.step seed config
+          in
+          ( { model | state = Evaluation newEvalStatus newConfig newSeed program aType }
+          , fireMsg EvalStep )
+        
+        _ -> (model, Cmd.none)
+    
+    Stop ->
+      case model.state of
+        Evaluation Running config seed program aType ->
+          let
+            newConfig = { config | channels = [], threads = [] }
+          in
+          ( { model | state = Evaluation Stopped newConfig seed program aType }, Cmd.none )
+        
+        _ -> (model, Cmd.none)
+    
+    ReRun ->
+      case model.state of
+        Evaluation Running _ _ _ _ ->
+          (model, Cmd.none)
+        
+        Evaluation _ _ seed program aType ->
+          update EvalStep 
+            { model | state = Evaluation Running (initialConfig program.mainTerm) seed program aType }
+        
+        _ -> (model, Cmd.none)
 
     LoadFile -> (model, Select.file [] GotFile)
 
     SaveFile -> (model, Download.string "programa.stl" "text/plain" model.code)
 
     GotFile file -> (model, Task.perform ChangeCode (File.toString file))
+
+
+getSeedFromTime : Cmd Msg
+getSeedFromTime =
+  Task.perform (\p -> GotSeed (initialSeed (posixToMillis p))) Time.now
+
+fireMsg : Msg -> Cmd Msg
+fireMsg msg =
+  Task.perform (\() -> msg) (sleep 0)
 
 
 
@@ -72,51 +141,48 @@ view model =
         [ button [ onClick LoadFile ] [ text "Carregar arquivo" ]
         , button [ onClick SaveFile ] [ text "Salvar arquivo" ]
         ]
-      , textarea [rows 25, cols 80, autofocus True, onInput ChangeCode, value model.code] [ ]
-      , viewParsed model.code
+      , textarea [rows 23, cols 80, autofocus True, onInput ChangeCode, value model.code] [ ]
+      , viewState model.state
       ]
   }
 
-viewParsed : String -> Html Msg
-viewParsed code =
-  case parseInferEval code of
+viewState : InterpreterState -> Html Msg
+viewState state =
+  case state of
     SyntaxError _ ->
-      pre [] [ text "Erro de sintaxe" ]
+      div []
+        [ pre [] [ text "Erro de sintaxe" ]
+        ]
 
-    TypeError _ error ->
-      pre [] [ text ("Erro de tipo: " ++ error) ]
+    TypeError error ->
+      div []
+        [ pre [] [ text ("Erro de tipo: " ++ error) ]
+        ]
     
-    EvaluationError _ aType ->
-      pre [] [-- text ("Valor: \n<erro>\n\n")
-             --, 
-             text ("Tipo: \n" ++ typeToString aType) ]
+    WaitingSeed _ _ aType ->
+      div []
+        [ pre [] [ text ("Tipo: \n" ++ typeToString aType) ]
+        ]
     
-    {-Success _ aType value ->
-      pre [] [ text ("Valor: \n" ++ (valueToString value) ++ "\n\n")
-             , text ("Tipo: \n" ++ typeToString aType) ]-}
-      
-
-
--- PARSING, INFERÊNCIA DE TIPO E AVALIAÇÃO
-
-type ParsingResult
-  = SyntaxError String
-  | TypeError STLProgram String
-  | EvaluationError STLProgram Type
-  --| Success STLProgram Type Value
-
-parseInferEval : String -> ParsingResult
-parseInferEval code =
-  case parseProgram code of
-    Ok program ->
-      case typeInferProgram program of
-        Ok aType ->
-          {-case evalProgram program of
-            Just value ->
-              Success program aType value
-            Nothing -> -}
-              EvaluationError program aType
-        Err error -> 
-          TypeError program error
-    Err errors ->
-      SyntaxError (String.join " or " errors)
+    Evaluation status { returnValue } _ _ aType ->
+      let
+        statusString =
+          case status of
+            Running  -> "Rodando"
+            Finished -> "Terminado"
+            Lock     -> "Lock"
+            Error    -> "Erro"
+            Stopped  -> "Parado"
+        valueString =
+          case returnValue of
+            Just value -> "Valor de retorno: " ++ valueToString value
+            Nothing    -> ""
+      in
+      div []
+        [ pre [] [ text ("Tipo: " ++ typeToString aType) ]
+        , pre [] [ text ("Status: " ++ statusString) ]
+        , pre [] [ text valueString ]
+        , case status of
+            Running -> button [ onClick Stop  ] [ text "Parar"         ]
+            _       -> button [ onClick ReRun ] [ text "Rodar de novo" ]
+        ]
