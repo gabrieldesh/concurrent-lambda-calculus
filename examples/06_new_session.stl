@@ -1,22 +1,35 @@
-typevars
-  Nat  : *ns ;
-  Bool : *ns
-end
-
 typedefs
+  Bool     = 1 + 1 ;
+  Nat      = rec x : *ns. @(1 + x) ;
+
   Servidor = ?Nat.!Bool.End ;
   Cliente  = !Nat.?Bool.End
 end
 
-vars
-  un zero    : Nat ;
-  un gt      : Nat -o Nat -o Bool ;
-end
+let un false : Bool = inl [1] {} in
+let un true  : Bool = inr [1] {} in
+
+let un zero : Nat = fold [Nat] @(inl [Nat] {}) in
+
+let un discard : Nat -o 1 =
+  \lin n : Nat.
+    let @x = unfold n in {}
+in
+
+let un isZero : Nat -o Bool =
+  \lin n : Nat.
+    let @unfoldN = unfold n in
+    case unfoldN of
+      inl unit  -> let {} = unit in true ;
+      inr predN -> let {} = discard predN in false
+in
+
+-------------------------------------------------------
 
 let un servidor : Servidor -o 1 =
   \lin s0 : Servidor.
-    let {n, s1} = receive s0          in
-    let lin s2  = send (gt n zero) s1 in
+    let {n, s1} = receive s0         in
+    let lin s2  = send (isZero n) s1 in
     close s2
 in
 

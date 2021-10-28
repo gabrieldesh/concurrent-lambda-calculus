@@ -19,10 +19,6 @@ type Kind = Kind_SessionType | Kind_NonSessionType
 
 type Multiplicity = Lin | Un
 
-
-
--- TIPOS
-
 type Type
   = Type_Var Id
   | Type_Rec Id Kind Type
@@ -40,6 +36,53 @@ type Type
   | Type_Accept Type
   | Type_Request Type
   | Type_Dual Type
+
+type Term
+  = Term_Var Id
+  | Term_LinearLambda Id Type Term
+  | Term_UnrestrictedLambda Id Type Term
+  | Term_Application Term Term
+  | Term_Pair Term Term
+  | Term_LetPair Id Id Term Term
+  | Term_Unit
+  | Term_LetUnit Term Term
+  | Term_Inl Type Term
+  | Term_Inr Type Term
+  | Term_Case Term Id Term Id Term
+  | Term_OfCourse Term
+  | Term_LetOfCourse Id Term Term
+  | Term_Send Term Term
+  | Term_Receive Term
+  | Term_SelectLeft Term
+  | Term_SelectRight Term
+  | Term_Branch Term Id Term Id Term
+  | Term_Close Term
+  | Term_NewAccess Type Id Id Term
+  | Term_Accept Term
+  | Term_Request Term
+  | Term_NewSession Type
+  | Term_Fork Term
+  | Term_Spawn Term
+  | Term_Fold Type Term
+  | Term_Unfold Term
+  | Term_LetLin Id (Maybe Type) Term Term
+  | Term_LetUn Id (Maybe Type) Term Term
+  | Term_LetRec Id Type Term Term
+
+
+type alias TypeVarContext = List (Id, Kind)
+
+type alias TypeVarEnv = List (Id, Type)
+
+type alias VarDeclarations = List (Id, (Multiplicity, Type))
+
+type alias STLProgram =
+  { typevars : TypeVarContext
+  , typedefs : TypeVarEnv
+  , vars : VarDeclarations
+  , mainTerm : Term
+  }
+
 
 
 kindToString : Kind -> String
@@ -98,56 +141,3 @@ typeToString aType =
     
     Type_Dual type1 ->
       "dual(" ++ typeToString type1 ++ ")"
-
-
-
--- TERMOS
-
-type Term
-  = Term_Var Id
-  | Term_LinearLambda Id Type Term
-  | Term_UnrestrictedLambda Id Type Term
-  | Term_Application Term Term
-  | Term_Pair Term Term
-  | Term_LetPair Id Id Term Term
-  | Term_Unit
-  | Term_LetUnit Term Term
-  | Term_Inl Type Term
-  | Term_Inr Type Term
-  | Term_Case Term Id Term Id Term
-  | Term_OfCourse Term
-  | Term_LetOfCourse Id Term Term
-  | Term_Send Term Term
-  | Term_Receive Term
-  | Term_SelectLeft Term
-  | Term_SelectRight Term
-  | Term_Branch Term Id Term Id Term
-  | Term_Close Term
-  | Term_NewAccess Type Id Id Term
-  | Term_Accept Term
-  | Term_Request Term
-  | Term_NewSession Type
-  | Term_Fork Term
-  | Term_Spawn Term
-  | Term_Fold Type Term
-  | Term_Unfold Term
-  | Term_LetLin Id (Maybe Type) Term Term
-  | Term_LetUn Id (Maybe Type) Term Term
-  | Term_LetRec Id Type Term Term
-
-
-
--- PROGRAMA
-
-type alias TypeVarContext = List (Id, Kind)
-
-type alias TypeVarEnv = List (Id, Type)
-
-type alias VarDeclarations = List (Id, (Multiplicity, Type))
-
-type alias STLProgram =
-  { typevars : TypeVarContext
-  , typedefs : TypeVarEnv
-  , vars : VarDeclarations
-  , mainTerm : Term
-  }
