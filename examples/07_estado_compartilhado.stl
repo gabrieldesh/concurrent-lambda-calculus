@@ -1,0 +1,65 @@
+typedefs
+  Bool = 1 + 1 ;
+
+  Cliente  = +{ ?Bool.End, !Bool.End } ;
+  Servidor = &{ !Bool.End, ?Bool.End }
+end
+
+let un false : Bool = inl [1] {} in
+let un true  : Bool = inr [1] {} in
+
+let un discardBool : Bool -o 1 =
+  \lin b : Bool.
+    case b of
+      inl unit -> unit ;
+      inr unit -> unit
+in
+
+let un duplicateBool : Bool -o Bool * Bool =
+  \lin n : Bool.
+    case n of
+      inl unit -> {inl [1] unit, inl [1] {}} ;
+      inr unit -> {inr [1] unit, inr [1] {}}
+in
+
+-------------------------------------------------------
+
+let rec servidor : Bool -o Accept Servidor -> 1 =
+  \lin valor : Bool.
+  \un acessoSrv : Accept Servidor.
+    let lin s0 = accept acessoSrv in
+    branch s0 of
+      left s1 ->
+        let {valor, valor'} = duplicateBool valor in
+        let lin s2          = send valor s1       in
+        let {}              = close s2            in
+        servidor valor' acessoSrv ;
+
+      right s1 ->
+        let {novoValor, s2} = receive s1        in
+        let {}              = close s2          in
+        let {}              = discardBool valor in
+        servidor novoValor acessoSrv
+in
+
+let un clientePut : Request Cliente -> 1 =
+  \un acessoClt : Request Cliente.
+    let lin c0 = request acessoClt in
+    let lin c1 = select right c0   in
+    let lin c2 = send true c1      in
+    close c2
+in
+
+let un clienteGet : Request Cliente -> Bool =
+  \un acessoClt : Request Cliente.
+    let lin c0  = request acessoClt in
+    let lin c1  = select left c0    in
+    let {b, c2} = receive c1        in
+    let {}      = close c2          in
+    b
+in
+
+new access [Servidor] acessoSrv, acessoClt in
+let {} = spawn (servidor false acessoSrv)  in
+let {} = spawn (clientePut acessoClt)      in
+clienteGet acessoClt

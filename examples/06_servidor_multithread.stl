@@ -1,0 +1,87 @@
+typedefs
+  Bool = 1 + 1 ;
+  Nat  = rec X : *ns. 1 + X ;
+
+  Cliente  = !Nat.?Bool.End ;
+  Servidor = ?Nat.!Bool.End
+end
+
+let un false : Bool = inl [1] {} in
+let un true  : Bool = inr [1] {} in
+
+let un discardBool : Bool -o 1 =
+  \lin b : Bool.
+    case b of
+      inl unit -> unit ;
+      inr unit -> unit
+in
+
+let un zero : Nat = fold [Nat] (inl [Nat] {}) in
+
+let un succ : Nat -o Nat =
+  \lin n : Nat.
+    fold [Nat] (inr [1] n)
+in
+
+let rec discardNat : Nat -o 1 =
+  \lin n : Nat.
+    case unfold n of
+      inl u ->
+        u ;
+
+      inr m ->
+        discardNat m
+in
+
+let un isZero : Nat -o Bool =
+  \lin n : Nat.
+    case unfold n of
+      inl u ->
+        let {} = u in
+        true ;
+
+      inr m ->
+        let {} = discardNat m in
+        false
+in
+
+let un fazAlgoComBool = discardBool in
+
+-------------------------------------------------------
+
+let un servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    let {n, s1} = receive s0         in
+    let lin s2  = send (isZero n) s1 in
+    close s2
+in
+
+let rec loopServidor : Accept Servidor -> 1 =
+  \un acessoSrv : Accept Servidor.
+    let lin s = accept acessoSrv   in
+    let {}    = spawn (servidor s) in
+    loopServidor acessoSrv
+in
+
+let un cliente1 : (Request Cliente) -> 1 =
+  \un acessoClt : Request Cliente.
+    let lin c0  = request acessoClt in
+    let lin c1  = send zero c0      in
+    let {b, c2} = receive c1        in
+    let {}      = close c2          in
+    fazAlgoComBool b
+in
+
+let un cliente2 : (Request Cliente) -> Bool =
+  \un acessoClt : Request Cliente.
+    let lin c0  = request acessoClt   in
+    let lin c1  = send (succ zero) c0 in
+    let {b, c2} = receive c1          in
+    let {}      = close c2            in
+    b
+in
+
+new access [Servidor] acessoSrv, acessoClt in
+let {} = spawn (loopServidor acessoSrv)    in
+let {} = spawn (cliente1 acessoClt) in
+cliente2 acessoClt

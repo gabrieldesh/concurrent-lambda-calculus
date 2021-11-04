@@ -1,20 +1,13 @@
 typedefs
-  Bool     = 1 + 1 ;
-  Nat      = rec x : *ns. @(1 + x) ;
+  Bool = 1 + 1 ;
+  Nat  = rec X : *ns. 1 + X ;
   
-  Servidor = rec X : *s . ?Nat.!Bool.X ;
-  Cliente  = rec X : *s . !Nat.?Bool.X
+  Cliente  = rec X : *s . +{ !Nat.?Bool.X, End } ;
+  Servidor = rec X : *s . &{ ?Nat.!Bool.X, End }
 end
 
 let un false : Bool = inl [1] {} in
 let un true  : Bool = inr [1] {} in
-
-let un zero : Nat = fold [Nat] @(inl [Nat] {}) in
-
-let un discardNat : Nat -o 1 =
-  \lin n : Nat.
-    let @x = unfold n in {}
-in
 
 let un discardBool : Bool -o 1 =
   \lin b : Bool.
@@ -23,29 +16,74 @@ let un discardBool : Bool -o 1 =
       inr unit -> unit
 in
 
+let un or : Bool -o Bool -o Bool =
+  \lin a : Bool.
+  \lin b : Bool.
+    case a of
+      inl unit ->
+        let {} = unit in
+        b ;
+
+      inr unit ->
+        let {} = unit in
+        let {} = discardBool b in
+        true
+in
+
+let un zero : Nat = fold [Nat] (inl [Nat] {}) in
+
+let un succ : Nat -o Nat =
+  \lin n : Nat.
+    fold [Nat] (inr [1] n)
+in
+
+let rec discardNat : Nat -o 1 =
+  \lin n : Nat.
+    case unfold n of
+      inl u ->
+        u ;
+
+      inr m ->
+        discardNat m
+in
+
 let un isZero : Nat -o Bool =
   \lin n : Nat.
-    let @unfoldN = unfold n in
-    case unfoldN of
-      inl unit  -> let {} = unit in true ;
-      inr predN -> let {} = discardNat predN in false
+    case unfold n of
+      inl u ->
+        let {} = u in
+        true ;
+
+      inr m ->
+        let {} = discardNat m in
+        false
 in
 
 -------------------------------------------------------
 
-let rec servidor : Servidor -o 1 =
-  \lin s0 : Servidor.
-    let {n, s1} = receive (unfold s0) in
-    let lin s2  = send (isZero n) s1  in
-    servidor s2
+let un cliente : Cliente -o Bool =
+  \lin c0  : Cliente.
+    let lin c1   = select left (unfold c0)  in
+    let lin c2   = send zero c1             in
+    let {b0, c3} = receive c2               in
+    let lin c4   = select left (unfold c3)  in
+    let lin c5   = send (succ zero) c4      in
+    let {b1, c6} = receive c5               in
+    let lin c7   = select right (unfold c6) in
+    let {}       = close c7                 in
+    or b0 b1
 in
 
-let rec cliente : Cliente -o 1 =
-  \lin c0  : Cliente.
-    let lin c1  = send zero (unfold c0) in
-    let {b, c2} = receive c1            in
-    let {}      = discardBool b         in
-    cliente c2
+let rec servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    branch (unfold s0) of
+      left s1 ->
+        let {n, s2} = receive s1         in
+        let lin s3  = send (isZero n) s2 in
+        servidor s3 ;
+      
+      right s1 ->
+        close s1
 in
 
 let lin c = fork servidor in

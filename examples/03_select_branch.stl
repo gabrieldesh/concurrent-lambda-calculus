@@ -1,0 +1,81 @@
+typedefs
+  Bool = 1 + 1 ;
+  Nat  = rec X : *ns. 1 + X ;
+  
+  Cliente  = +{ !Nat.?Bool.End, !Nat.!Nat.?Nat.End } ;
+  Servidor = &{ ?Nat.!Bool.End, ?Nat.?Nat.!Nat.End }
+end
+
+let un false : Bool = inl [1] {} in
+let un true  : Bool = inr [1] {} in
+
+let un zero : Nat = fold [Nat] (inl [Nat] {}) in
+
+let un succ : Nat -o Nat =
+  \lin n : Nat.
+    fold [Nat] (inr [1] n)
+in
+
+let rec add : Nat -o Nat -o Nat =
+  \lin n : Nat.
+  \lin m : Nat.
+    case unfold n of
+      inl u ->
+        let {} = u in
+        m ;
+
+      inr pred_n ->
+        succ (add pred_n m)
+in
+
+let rec discardNat : Nat -o 1 =
+  \lin n : Nat.
+    case unfold n of
+      inl u ->
+        u ;
+
+      inr m ->
+        discardNat m
+in
+
+let un isZero : Nat -o Bool =
+  \lin n : Nat.
+    case unfold n of
+      inl u ->
+        let {} = u in
+        true ;
+
+      inr m ->
+        let {} = discardNat m in
+        false
+in
+
+-------------------------------------------------------
+
+let un cliente : Cliente -o Nat =
+  \lin c0 : Cliente.
+    let lin c1  = select right c0 in
+    let lin c2  = send (succ zero) c1 in
+    let lin c3  = send (succ zero) c2 in
+    let {n, c4} = receive c3          in
+    let {}      = close c4            in
+    n
+in
+
+let un servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    branch s0 of
+      left s1 ->
+        let {n, s2} = receive s1         in
+        let lin s3  = send (isZero n) s2 in
+        close s3 ;
+      
+      right s1 ->
+        let {n1, s2} = receive s1          in
+        let {n2, s3} = receive s2          in
+        let lin s4   = send (add n1 n2) s3 in
+        close s4
+in
+
+let lin c = fork servidor in
+cliente c

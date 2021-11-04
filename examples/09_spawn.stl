@@ -1,2 +1,0 @@
-let {} = spawn (let rec x : 1 = x in x) in
-(let rec x : 1 = x in x)

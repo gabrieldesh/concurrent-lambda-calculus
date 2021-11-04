@@ -1,37 +1,39 @@
 typedefs
-  Bool     = 1 + 1 ;
-  Nat      = rec x : *ns. @(1 + x) ;
+  Bool = 1 + 1 ;
+  Nat  = rec X : *ns. 1 + X ;
 
-  Servidor = ?Nat.!Bool.End ;
-  Cliente  = !Nat.?Bool.End
+  Cliente  = !Nat.?Bool.End ;
+  Servidor = ?Nat.!Bool.End
 end
 
 let un false : Bool = inl [1] {} in
 let un true  : Bool = inr [1] {} in
 
-let un zero : Nat = fold [Nat] @(inl [Nat] {}) in
+let un zero : Nat = fold [Nat] (inl [Nat] {}) in
 
-let un discard : Nat -o 1 =
+let rec discardNat : Nat -o 1 =
   \lin n : Nat.
-    let @x = unfold n in {}
+    case unfold n of
+      inl u ->
+        u ;
+
+      inr m ->
+        discardNat m
 in
 
 let un isZero : Nat -o Bool =
   \lin n : Nat.
-    let @unfoldN = unfold n in
-    case unfoldN of
-      inl unit  -> let {} = unit in true ;
-      inr predN -> let {} = discard predN in false
+    case unfold n of
+      inl u ->
+        let {} = u in
+        true ;
+
+      inr m ->
+        let {} = discardNat m in
+        false
 in
 
 -------------------------------------------------------
-
-let un servidor : Servidor -o 1 =
-  \lin s0 : Servidor.
-    let {n, s1} = receive s0         in
-    let lin s2  = send (isZero n) s1 in
-    close s2
-in
 
 let un cliente : Cliente -o Bool =
   \lin c0 : Cliente.
@@ -39,6 +41,13 @@ let un cliente : Cliente -o Bool =
     let {b, c2} = receive c1   in
     let {}      = close c2     in
     b
+in
+
+let un servidor : Servidor -o 1 =
+  \lin s0 : Servidor.
+    let {n, s1} = receive s0         in
+    let lin s2  = send (isZero n) s1 in
+    close s2
 in
 
 let lin c = fork servidor in
