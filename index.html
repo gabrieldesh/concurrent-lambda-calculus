@@ -12507,9 +12507,9 @@ var $author$project$Evaluation$valueToString = function (value) {
 		case 'Value_ChannelName':
 			return '<nome de canal>';
 		case 'Value_LinearFn':
-			return '<função linear>';
+			return '<closure de função linear>';
 		case 'Value_UnrestrictedFn':
-			return '<função irrestrita>';
+			return '<closure de função irrestrita>';
 		case 'Value_Pair':
 			var v1 = value.a;
 			var v2 = value.b;
@@ -12523,7 +12523,7 @@ var $author$project$Evaluation$valueToString = function (value) {
 			var v = value.a;
 			return 'inr (' + ($author$project$Evaluation$valueToString(v) + ')');
 		case 'Value_OfCourse':
-			return '<clausura of course>';
+			return '<closure de @>';
 		default:
 			var v = value.a;
 			return 'fold (' + ($author$project$Evaluation$valueToString(v) + ')');
