@@ -7,7 +7,7 @@ import Result exposing (andThen, mapError)
 
 -- INFERÊNCIA DE TIPO DO PROGRAMA
 
-typeInferProgram : STLProgram -> Result String Type
+typeInferProgram : CLCProgram -> Result String Type
 typeInferProgram { typevars, typedefs, vars, mainTerm } =
   checkTypedefs (List.reverse typevars) typedefs |> andThen (\typeVarContext ->
   let

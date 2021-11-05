@@ -35,8 +35,8 @@ main =
 type InterpreterState
   = SyntaxError String
   | TypeError String
-  | WaitingSeed Configuration STLProgram Type
-  | Evaluation EvalStatus Configuration Seed STLProgram Type
+  | WaitingSeed Configuration CLCProgram Type
+  | Evaluation EvalStatus Configuration Seed CLCProgram Type
 
 type alias Model = { code : String, state : InterpreterState }
 
@@ -107,7 +107,7 @@ update msg model =
 
     LoadFile -> (model, Select.file [] GotFile)
 
-    SaveFile -> (model, Download.string "programa.stl" "text/plain" model.code)
+    SaveFile -> (model, Download.string "programa.clc" "text/plain" model.code)
 
     GotFile file -> (model, Task.perform ChangeCode (File.toString file))
 

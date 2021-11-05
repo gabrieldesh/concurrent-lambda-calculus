@@ -9,7 +9,7 @@ module AbstractSyntax exposing
   , TypeVarContext
   , TypeVarEnv
   , VarDeclarations
-  , STLProgram
+  , CLCProgram
   )
 
 
@@ -76,7 +76,7 @@ type alias TypeVarEnv = List (Id, Type)
 
 type alias VarDeclarations = List (Id, (Multiplicity, Type))
 
-type alias STLProgram =
+type alias CLCProgram =
   { typevars : TypeVarContext
   , typedefs : TypeVarEnv
   , vars : VarDeclarations

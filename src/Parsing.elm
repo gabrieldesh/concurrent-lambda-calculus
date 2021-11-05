@@ -5,7 +5,7 @@ import Combine exposing (..)
 import Combine.Char exposing (anyChar)
 
 
-parseProgram : String -> Result (List String) STLProgram
+parseProgram : String -> Result (List String) CLCProgram
 parseProgram input =
   case parse programParser input of
     Ok (_, _, program) ->
@@ -72,7 +72,7 @@ multiplicityTag =
 
 -- PROGRAMA
 
-programParser : Parser s STLProgram
+programParser : Parser s CLCProgram
 programParser = 
   optional [] typevarsClause |> andThen (\typevars ->
   optional [] typedefsClause |> andThen (\typedefs ->
