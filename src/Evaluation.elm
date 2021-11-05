@@ -102,10 +102,10 @@ valueToString value =
       "<nome de canal>"
     
     Value_LinearFn _ _ _ ->
-      "<função linear>"
+      "<closure de função linear>"
     
     Value_UnrestrictedFn _ _ _ ->
-      "<função irrestrita>"
+      "<closure de função irrestrita>"
     
     Value_Pair v1 v2 ->
       "{" ++ valueToString v1 ++ ", " ++ valueToString v2 ++ "}"
@@ -120,7 +120,7 @@ valueToString value =
       "inr (" ++ valueToString v ++ ")"
     
     Value_OfCourse _ _ ->
-      "<clausura of course>"
+      "<closure de @>"
     
     Value_Fold v ->
       "fold (" ++ valueToString v ++ ")"
