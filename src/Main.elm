@@ -134,9 +134,9 @@ subscriptions _ =
 
 view : Model -> Browser.Document Msg
 view model = 
-  { title = "Simulador de cálculo-lambda concorrente"
+  { title = "Interpretador de cálculo-lambda concorrente"
   , body =
-      [ h1 [] [text "Simulador de cálculo-lambda concorrente"]
+      [ h1 [] [text "Interpretador de cálculo-lambda concorrente"]
       , div [style "margin-bottom" "20px"]
         [ button [ onClick LoadFile ] [ text "Carregar arquivo" ]
         , button [ onClick SaveFile ] [ text "Salvar arquivo" ]
