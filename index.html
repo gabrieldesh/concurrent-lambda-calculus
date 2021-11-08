@@ -5554,9 +5554,9 @@ var $author$project$Evaluation$Stopped = {$: 'Stopped'};
 var $author$project$Main$TypeError = function (a) {
 	return {$: 'TypeError', a: a};
 };
-var $author$project$Main$WaitingSeed = F3(
-	function (a, b, c) {
-		return {$: 'WaitingSeed', a: a, b: b, c: c};
+var $author$project$Main$WellTyped = F2(
+	function (a, b) {
+		return {$: 'WellTyped', a: a, b: b};
 	});
 var $elm$time$Time$Posix = function (a) {
 	return {$: 'Posix', a: a};
@@ -12290,87 +12290,20 @@ var $author$project$Main$update = F2(
 							return _Utils_Tuple2(
 								{
 									code: newCode,
-									state: A3(
-										$author$project$Main$WaitingSeed,
-										$author$project$Evaluation$initialConfig(program.mainTerm),
-										program,
-										aType)
+									state: A2($author$project$Main$WellTyped, program, aType)
 								},
-								$author$project$Main$getSeedFromTime);
+								$elm$core$Platform$Cmd$none);
 						}
 					}
+				case 'Run':
+					return _Utils_Tuple2(model, $author$project$Main$getSeedFromTime);
 				case 'GotSeed':
 					var seed = msg.a;
 					var _v3 = model.state;
-					if (_v3.$ === 'WaitingSeed') {
-						var config = _v3.a;
-						var program = _v3.b;
-						var aType = _v3.c;
-						var $temp$msg = $author$project$Main$EvalStep,
-							$temp$model = _Utils_update(
-							model,
-							{
-								state: A5($author$project$Main$Evaluation, $author$project$Evaluation$Running, config, seed, program, aType)
-							});
-						msg = $temp$msg;
-						model = $temp$model;
-						continue update;
-					} else {
-						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-					}
-				case 'EvalStep':
-					var _v4 = model.state;
-					if ((_v4.$ === 'Evaluation') && (_v4.a.$ === 'Running')) {
-						var _v5 = _v4.a;
-						var config = _v4.b;
-						var seed = _v4.c;
-						var program = _v4.d;
-						var aType = _v4.e;
-						var _v6 = A2($author$project$Evaluation$step, seed, config);
-						var newEvalStatus = _v6.a;
-						var newConfig = _v6.b;
-						var newSeed = _v6.c;
-						return _Utils_Tuple2(
-							_Utils_update(
-								model,
-								{
-									state: A5($author$project$Main$Evaluation, newEvalStatus, newConfig, newSeed, program, aType)
-								}),
-							$author$project$Main$fireMsg($author$project$Main$EvalStep));
-					} else {
-						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-					}
-				case 'Stop':
-					var _v7 = model.state;
-					if ((_v7.$ === 'Evaluation') && (_v7.a.$ === 'Running')) {
-						var _v8 = _v7.a;
-						var config = _v7.b;
-						var seed = _v7.c;
-						var program = _v7.d;
-						var aType = _v7.e;
-						var newConfig = _Utils_update(
-							config,
-							{channels: _List_Nil, threads: _List_Nil});
-						return _Utils_Tuple2(
-							_Utils_update(
-								model,
-								{
-									state: A5($author$project$Main$Evaluation, $author$project$Evaluation$Stopped, newConfig, seed, program, aType)
-								}),
-							$elm$core$Platform$Cmd$none);
-					} else {
-						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-					}
-				case 'ReRun':
-					var _v9 = model.state;
-					if (_v9.$ === 'Evaluation') {
-						if (_v9.a.$ === 'Running') {
-							var _v10 = _v9.a;
-							return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-						} else {
-							var seed = _v9.c;
-							var program = _v9.d;
-							var aType = _v9.e;
+					switch (_v3.$) {
+						case 'WellTyped':
+							var program = _v3.a;
+							var aType = _v3.b;
 							var $temp$msg = $author$project$Main$EvalStep,
 								$temp$model = _Utils_update(
 								model,
@@ -12386,7 +12319,72 @@ var $author$project$Main$update = F2(
 							msg = $temp$msg;
 							model = $temp$model;
 							continue update;
-						}
+						case 'Evaluation':
+							if (_v3.a.$ === 'Running') {
+								var _v4 = _v3.a;
+								return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+							} else {
+								var program = _v3.d;
+								var aType = _v3.e;
+								var $temp$msg = $author$project$Main$EvalStep,
+									$temp$model = _Utils_update(
+									model,
+									{
+										state: A5(
+											$author$project$Main$Evaluation,
+											$author$project$Evaluation$Running,
+											$author$project$Evaluation$initialConfig(program.mainTerm),
+											seed,
+											program,
+											aType)
+									});
+								msg = $temp$msg;
+								model = $temp$model;
+								continue update;
+							}
+						default:
+							return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'EvalStep':
+					var _v5 = model.state;
+					if ((_v5.$ === 'Evaluation') && (_v5.a.$ === 'Running')) {
+						var _v6 = _v5.a;
+						var config = _v5.b;
+						var seed = _v5.c;
+						var program = _v5.d;
+						var aType = _v5.e;
+						var _v7 = A2($author$project$Evaluation$step, seed, config);
+						var newEvalStatus = _v7.a;
+						var newConfig = _v7.b;
+						var newSeed = _v7.c;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									state: A5($author$project$Main$Evaluation, newEvalStatus, newConfig, newSeed, program, aType)
+								}),
+							$author$project$Main$fireMsg($author$project$Main$EvalStep));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'Stop':
+					var _v8 = model.state;
+					if ((_v8.$ === 'Evaluation') && (_v8.a.$ === 'Running')) {
+						var _v9 = _v8.a;
+						var config = _v8.b;
+						var seed = _v8.c;
+						var program = _v8.d;
+						var aType = _v8.e;
+						var newConfig = _Utils_update(
+							config,
+							{channels: _List_Nil, threads: _List_Nil});
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									state: A5($author$project$Main$Evaluation, $author$project$Evaluation$Stopped, newConfig, seed, program, aType)
+								}),
+							$elm$core$Platform$Cmd$none);
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -12499,7 +12497,7 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 			$elm$json$Json$Encode$string(string));
 	});
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $author$project$Main$ReRun = {$: 'ReRun'};
+var $author$project$Main$Run = {$: 'Run'};
 var $author$project$Main$Stop = {$: 'Stop'};
 var $elm$html$Html$pre = _VirtualDom_node('pre');
 var $author$project$Evaluation$valueToString = function (value) {
@@ -12560,8 +12558,8 @@ var $author$project$Main$viewState = function (state) {
 								$elm$html$Html$text('Erro de tipo: ' + error)
 							]))
 					]));
-		case 'WaitingSeed':
-			var aType = state.c;
+		case 'WellTyped':
+			var aType = state.b;
 			return A2(
 				$elm$html$Html$div,
 				_List_Nil,
@@ -12574,6 +12572,16 @@ var $author$project$Main$viewState = function (state) {
 							[
 								$elm$html$Html$text(
 								'Tipo: \n' + $author$project$AbstractSyntax$typeToString(aType))
+							])),
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick($author$project$Main$Run)
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Rodar')
 							]))
 					]));
 		default:
@@ -12646,7 +12654,7 @@ var $author$project$Main$viewState = function (state) {
 								$elm$html$Html$button,
 								_List_fromArray(
 									[
-										$elm$html$Html$Events$onClick($author$project$Main$ReRun)
+										$elm$html$Html$Events$onClick($author$project$Main$Run)
 									]),
 								_List_fromArray(
 									[

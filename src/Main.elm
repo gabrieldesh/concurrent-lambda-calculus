@@ -35,7 +35,7 @@ main =
 type InterpreterState
   = SyntaxError String
   | TypeError String
-  | WaitingSeed Configuration CLCProgram Type
+  | WellTyped CLCProgram Type
   | Evaluation EvalStatus Configuration Seed CLCProgram Type
 
 type alias Model = { code : String, state : InterpreterState }
@@ -47,7 +47,7 @@ init _ = ({ code = "", state = SyntaxError "" }, Cmd.none)
 
 -- UPDATE
 
-type Msg = ChangeCode String | GotSeed Seed | EvalStep | Stop | ReRun | LoadFile | SaveFile | GotFile File
+type Msg = ChangeCode String | Run | GotSeed Seed | EvalStep | Stop | LoadFile | SaveFile | GotFile File
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = 
@@ -63,13 +63,24 @@ update msg model =
               ( { code = newCode, state = TypeError error }
               , Cmd.none )
             Ok aType ->
-              ( { code = newCode, state = WaitingSeed (initialConfig program.mainTerm) program aType }
-              , getSeedFromTime )
+              ( { code = newCode, state = WellTyped program aType }
+              , Cmd.none )
+    
+    Run ->
+      (model, getSeedFromTime)
     
     GotSeed seed ->
       case model.state of
-        WaitingSeed config program aType ->
-          update EvalStep { model | state = Evaluation Running config seed program aType }
+        WellTyped program aType ->
+          update EvalStep 
+            { model | state = Evaluation Running (initialConfig program.mainTerm) seed program aType }
+        
+        Evaluation Running _ _ _ _ ->
+          (model, Cmd.none)
+        
+        Evaluation _ _ _ program aType ->
+          update EvalStep 
+            { model | state = Evaluation Running (initialConfig program.mainTerm) seed program aType }
         
         _ -> (model, Cmd.none)
     
@@ -91,17 +102,6 @@ update msg model =
             newConfig = { config | channels = [], threads = [] }
           in
           ( { model | state = Evaluation Stopped newConfig seed program aType }, Cmd.none )
-        
-        _ -> (model, Cmd.none)
-    
-    ReRun ->
-      case model.state of
-        Evaluation Running _ _ _ _ ->
-          (model, Cmd.none)
-        
-        Evaluation _ _ seed program aType ->
-          update EvalStep 
-            { model | state = Evaluation Running (initialConfig program.mainTerm) seed program aType }
         
         _ -> (model, Cmd.none)
 
@@ -159,9 +159,10 @@ viewState state =
         [ pre [] [ text ("Erro de tipo: " ++ error) ]
         ]
     
-    WaitingSeed _ _ aType ->
+    WellTyped _ aType ->
       div []
         [ pre [] [ text ("Tipo: \n" ++ typeToString aType) ]
+        , button [ onClick Run ] [ text "Rodar" ]
         ]
     
     Evaluation status { returnValue } _ _ aType ->
@@ -184,5 +185,5 @@ viewState state =
         , pre [] [ text valueString ]
         , case status of
             Running -> button [ onClick Stop  ] [ text "Parar"         ]
-            _       -> button [ onClick ReRun ] [ text "Rodar de novo" ]
+            _       -> button [ onClick Run ] [ text "Rodar de novo" ]
         ]
